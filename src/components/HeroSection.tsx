@@ -20,7 +20,7 @@ const HeroSection = () => {
 
   return (
     <section className="border-b border-ink">
-      <div className="mx-auto max-w-[1280px] px-5 py-16 md:py-24 grid grid-cols-1 md:grid-cols-[1fr_380px] gap-12 md:gap-16">
+      <div className="mx-auto max-w-[1280px] px-5 py-8 md:py-12 grid grid-cols-1 md:grid-cols-[1fr_380px] gap-12 md:gap-16">
         {/* Left column */}
         <div>
           <div className="flex items-center gap-3 mb-8">

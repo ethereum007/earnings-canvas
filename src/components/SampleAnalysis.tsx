@@ -30,7 +30,7 @@ const SampleAnalysis = () => {
               {[
                 ["Net profit YoY", "+24.49%", true],
                 ["Domestic NIM", "3.12% ▲ QoQ", true],
-                ["Gross NPA", "1.57% ▼", true],
+                ["Gross NPA", "1.57% ▼ (improving)", true],
                 ["Credit growth", "15.14% YoY", true],
                 ["ROE (9MFY26)", "20.68%", false],
               ].map(([label, value, isGreen], i) => (
