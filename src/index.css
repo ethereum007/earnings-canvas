@@ -6,6 +6,56 @@
 
 @layer base {
   :root {
+    --background: 210 40% 96%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 270 60% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 30% 90%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 30% 90%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 160 60% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 82%;
+    --input: 214 20% 82%;
+    --ring: 270 60% 55%;
+
+    --radius: 0.75rem;
+
+    --emerald: 160 60% 38%;
+    --emerald-muted: 160 40% 90%;
+    --purple: 270 60% 55%;
+    --purple-muted: 270 30% 92%;
+    --amber: 38 92% 50%;
+    --amber-muted: 38 40% 90%;
+    --rose: 0 72% 51%;
+    --rose-muted: 0 40% 92%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 270 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 30% 90%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 20% 82%;
+    --sidebar-ring: 270 60% 55%;
+  }
+
+  .dark {
     --background: 222 47% 5%;
     --foreground: 210 40% 98%;
 
@@ -34,9 +84,6 @@
     --input: 217 33% 20%;
     --ring: 270 60% 60%;
 
-    --radius: 0.75rem;
-
-    /* Dashboard tokens */
     --emerald: 160 60% 45%;
     --emerald-muted: 160 40% 20%;
     --purple: 270 60% 60%;
