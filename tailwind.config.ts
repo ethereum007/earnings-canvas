@@ -14,9 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ["Playfair Display", "serif"],
-        sans: ["DM Sans", "sans-serif"],
-        mono: ["DM Mono", "monospace"],
+        sans: ["Inter", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -52,23 +51,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        paper: {
-          DEFAULT: "hsl(var(--paper))",
-          2: "hsl(var(--paper-2))",
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
+          muted: "hsl(var(--emerald-muted))",
         },
-        ink: {
-          DEFAULT: "hsl(var(--ink))",
-          60: "hsl(var(--ink-60))",
-          30: "hsl(var(--ink-30))",
-          10: "hsl(var(--ink-10))",
+        purple: {
+          DEFAULT: "hsl(var(--purple))",
+          muted: "hsl(var(--purple-muted))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          muted: "hsl(var(--amber-muted))",
         },
-        "green-text": "hsl(var(--green-text))",
-        "green-bg": "hsl(var(--green-bg))",
-        red: "hsl(var(--red))",
+        rose: {
+          DEFAULT: "hsl(var(--rose))",
+          muted: "hsl(var(--rose-muted))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
