@@ -26,8 +26,8 @@ const Dashboard = () => {
     },
   });
 
-  const filtered = useMemo(() => {
-    if (!analyses) return [];
+  const grouped = useMemo(() => {
+    if (!analyses) return {};
     let result = analyses.filter((a) => {
       const q = search.toLowerCase();
       if (!q) return true;
@@ -44,7 +44,13 @@ const Dashboard = () => {
       return new Date(b.analyzed_at ?? 0).getTime() - new Date(a.analyzed_at ?? 0).getTime();
     });
 
-    return result;
+    const groups: Record<string, typeof result> = {};
+    for (const item of result) {
+      const sector = item.sector ?? "Other";
+      if (!groups[sector]) groups[sector] = [];
+      groups[sector].push(item);
+    }
+    return groups;
   }, [analyses, search, sort]);
 
   const signalCounts = useMemo(() => {
