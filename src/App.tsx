@@ -8,6 +8,7 @@ import CompanyDetail from "./pages/CompanyDetail";
 import SentimentOverview from "./pages/SentimentOverview";
 import PolicyAlpha from "./pages/PolicyAlpha";
 import Conferences from "./pages/Conferences";
+import Investors from "./pages/Investors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
