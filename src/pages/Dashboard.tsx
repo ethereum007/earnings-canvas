@@ -127,62 +127,68 @@ const Dashboard = () => {
               <div key={i} className="bg-card rounded-lg border border-border p-5 animate-pulse h-48" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : Object.keys(grouped).length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             No companies found matching your search.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => navigate(`/company/${a.symbol}`)}
-                className="bg-card/60 rounded-lg border border-border p-5 text-left hover:bg-card hover:scale-[1.02] hover:border-primary/40 transition-all duration-200 group"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">
-                      {a.symbol}
-                    </div>
-                    <div className="text-sm text-muted-foreground truncate max-w-[180px]">
-                      {a.name}
-                    </div>
-                  </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-md border ${getSignalColor(a.investment_signal)}`}>
-                    {getSignalLabel(a.investment_signal)}
-                  </span>
-                </div>
+          <div className="space-y-8">
+            {Object.entries(grouped)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([sector, companies]) => (
+                <div key={sector}>
+                  <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                    {sector}
+                    <span className="text-xs font-normal text-muted-foreground">({companies.length})</span>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {companies.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => navigate(`/company/${a.symbol}`)}
+                        className="bg-card/60 rounded-lg border border-border p-5 text-left hover:bg-card hover:scale-[1.02] hover:border-primary/40 transition-all duration-200 group"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="font-bold text-foreground text-lg group-hover:text-primary transition-colors">
+                              {a.symbol}
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate max-w-[180px]">
+                              {a.name}
+                            </div>
+                          </div>
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-md border ${getSignalColor(a.investment_signal)}`}>
+                            {getSignalLabel(a.investment_signal)}
+                          </span>
+                        </div>
 
-                {a.sector && (
-                  <Badge variant="outline" className="text-xs mb-3 text-muted-foreground">
-                    {a.sector}
-                  </Badge>
-                )}
+                        {/* Sentiment bar */}
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                            <span>Sentiment</span>
+                            <span className={getSentimentColor(a.sentiment_score)}>
+                              {a.sentiment_score?.toFixed(2) ?? "N/A"}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-rose via-amber to-emerald rounded-full transition-all"
+                              style={{ width: `${getSentimentBarWidth(a.sentiment_score)}%` }}
+                            />
+                          </div>
+                        </div>
 
-                {/* Sentiment bar */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Sentiment</span>
-                    <span className={getSentimentColor(a.sentiment_score)}>
-                      {a.sentiment_score?.toFixed(2) ?? "N/A"}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-rose via-amber to-emerald rounded-full transition-all"
-                      style={{ width: `${getSentimentBarWidth(a.sentiment_score)}%` }}
-                    />
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            {getToneEmoji(a.mgmt_tone)} {a.mgmt_tone ?? "N/A"}
+                          </span>
+                          <span className="text-xs">{a.quarter}</span>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {getToneEmoji(a.mgmt_tone)} {a.mgmt_tone ?? "N/A"}
-                  </span>
-                  <span className="text-xs">{a.quarter}</span>
-                </div>
-              </button>
-            ))}
+              ))}
           </div>
         )}
       </main>
