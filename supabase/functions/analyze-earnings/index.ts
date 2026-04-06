@@ -140,7 +140,7 @@ Return ONLY valid JSON, no markdown formatting.`;
       transcript_url: transcript_url || null,
       ppt_url: ppt_url || null,
       raw_transcript: transcript.substring(0, 100000),
-      analysis_model: "gemini-2.5-flash-preview",
+      analysis_model: "gemini-2.5-flash",
     }).select().single();
 
     if (error) {
