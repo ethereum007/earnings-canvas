@@ -21,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/company/:symbol" element={<CompanyDetail />} />
           <Route path="/sentiment" element={<SentimentOverview />} />
+          <Route path="/policy" element={<PolicyAlpha />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
