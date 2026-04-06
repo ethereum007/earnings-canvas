@@ -23,6 +23,7 @@ const App = () => (
           <Route path="/company/:symbol" element={<CompanyDetail />} />
           <Route path="/sentiment" element={<SentimentOverview />} />
           <Route path="/policy" element={<PolicyAlpha />} />
+          <Route path="/conferences" element={<Conferences />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
