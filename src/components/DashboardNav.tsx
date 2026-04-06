@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 const navItems = [
   { label: "Dashboard", path: "/" },
   { label: "Sentiment", path: "/sentiment" },
+  { label: "Policy Alpha", path: "/policy" },
 ];
 
 const DashboardNav = () => {
