@@ -9,6 +9,7 @@ import SentimentOverview from "./pages/SentimentOverview";
 import PolicyAlpha from "./pages/PolicyAlpha";
 import Conferences from "./pages/Conferences";
 import Investors from "./pages/Investors";
+import Brokers from "./pages/Brokers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
