@@ -7,6 +7,7 @@ const navItems = [
   { label: "Sentiment", path: "/sentiment" },
   { label: "Policy Alpha", path: "/policy" },
   { label: "Conferences", path: "/conferences" },
+  { label: "Investors", path: "/investors" },
 ];
 
 const DashboardNav = () => {
