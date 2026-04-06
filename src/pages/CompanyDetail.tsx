@@ -67,7 +67,21 @@ interface Risk {
 
 const toRisks = (val: Json | null): Risk[] => {
   if (!val || !Array.isArray(val)) return [];
-  return val as unknown as Risk[];
+  return val.map((item) => {
+    if (typeof item === "string") {
+      return { risk: item, severity: "Medium", probability: "Medium", detail: "" };
+    }
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      const obj = item as Record<string, unknown>;
+      return {
+        risk: (obj.risk as string) ?? String(item),
+        severity: (obj.severity as string) ?? "Medium",
+        probability: (obj.probability as string) ?? "Medium",
+        detail: (obj.detail as string) ?? "",
+      };
+    }
+    return { risk: String(item), severity: "Medium", probability: "Medium", detail: "" };
+  });
 };
 
 interface KeyNumber {
