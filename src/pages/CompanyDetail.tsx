@@ -21,7 +21,21 @@ interface KeyTakeaway {
 
 const toTakeaways = (val: Json | null): KeyTakeaway[] => {
   if (!val || !Array.isArray(val)) return [];
-  return val as unknown as KeyTakeaway[];
+  return val.map((item) => {
+    if (typeof item === "string") {
+      return { point: item, category: "Insight", impact: "Neutral", significance: "MEDIUM" };
+    }
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      const obj = item as Record<string, unknown>;
+      return {
+        point: (obj.point as string) ?? (obj.takeaway as string) ?? String(item),
+        category: (obj.category as string) ?? "Insight",
+        impact: (obj.impact as string) ?? "Neutral",
+        significance: (obj.significance as string) ?? "MEDIUM",
+      };
+    }
+    return { point: String(item), category: "Insight", impact: "Neutral", significance: "MEDIUM" };
+  });
 };
 
 interface GuidanceTarget {
