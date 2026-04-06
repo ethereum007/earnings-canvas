@@ -1,0 +1,1 @@
+UPDATE public.companies SET sector = 'Asset Management' WHERE symbol IN ('UTIAMC', 'HDFCAMC');
