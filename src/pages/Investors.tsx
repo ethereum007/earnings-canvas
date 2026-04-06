@@ -129,7 +129,7 @@ const Investors = () => {
         </div>
 
         <div className="mt-5 text-xs text-muted-foreground/50 text-center">
-          Showing {filtered.length} of {INVESTORS.length} investors · Source: Churchgate Partners IR Toolkit
+          Showing {filtered.length} of {INVESTORS.length} investors
         </div>
       </div>
     </div>
