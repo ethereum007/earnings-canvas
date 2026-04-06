@@ -9,6 +9,7 @@ import SentimentOverview from "./pages/SentimentOverview";
 import PolicyAlpha from "./pages/PolicyAlpha";
 import Conferences from "./pages/Conferences";
 import Investors from "./pages/Investors";
+import Brokers from "./pages/Brokers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/policy" element={<PolicyAlpha />} />
           <Route path="/conferences" element={<Conferences />} />
           <Route path="/investors" element={<Investors />} />
+          <Route path="/brokers" element={<Brokers />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
