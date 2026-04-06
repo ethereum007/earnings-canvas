@@ -65,7 +65,7 @@ Return ONLY valid JSON, no markdown formatting.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Analyze this earnings call transcript:\n\n${transcript.substring(0, 80000)}` },
