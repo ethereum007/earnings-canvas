@@ -27,6 +27,7 @@ const App = () => (
           <Route path="/policy" element={<PolicyAlpha />} />
           <Route path="/conferences" element={<Conferences />} />
           <Route path="/investors" element={<Investors />} />
+          <Route path="/brokers" element={<Brokers />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
