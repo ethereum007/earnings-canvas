@@ -10,7 +10,9 @@ export default function TabVerdict({
 }: {
   company: EarningsSeasonRow;
 }) {
-  const score = co.verdict_score ?? co.sentiment_score ?? 0;
+  // sentiment_score is 0-1; verdict_score is 0-10 (or rescaled). Normalize to /10.
+  const rawScore = co.verdict_score ?? co.sentiment_score ?? 0;
+  const score = rawScore > 0 && rawScore <= 1 ? rawScore * 10 : rawScore;
   const scoreColor =
     score >= 7.5
       ? "text-emerald-400 border-emerald-400/40"

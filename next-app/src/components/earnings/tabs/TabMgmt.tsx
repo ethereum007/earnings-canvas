@@ -78,7 +78,13 @@ export default function TabMgmt({ company: co }: { company: EarningsSeasonRow })
             {co.mgmt_confidence != null && (
               <span className="text-xs text-zinc-400">
                 Confidence{" "}
-                <span className="text-white">{co.mgmt_confidence}/10</span>
+                <span className="text-white">
+                  {(co.mgmt_confidence <= 1
+                    ? co.mgmt_confidence * 10
+                    : co.mgmt_confidence
+                  ).toFixed(1)}
+                  /10
+                </span>
               </span>
             )}
           </div>
