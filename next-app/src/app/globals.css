@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #09090b;
+  --color-surface: #18181b;
+  --color-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-bg);
+  font-feature-settings: "tnum";
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
