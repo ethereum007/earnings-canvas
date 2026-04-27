@@ -184,6 +184,77 @@ Already in `next-app/.env.local`. If lost:
 - Project URL: `https://pnmioozueiudekegjbql.supabase.co`
 - Anon + service role keys: Supabase dashboard → Settings → API
 
+## Publishing pipeline (markdown → live page)
+
+### Workflow
+
+1. **Author the markdown article** following the canonical structure in
+   `G:\2. Earnings Canvas\Reliance\article_template.md` (or use the existing
+   Claude Code editorial system in that folder to generate it from PDFs).
+
+2. **Ensure the company exists** in the `companies` Supabase table. If it
+   doesn't, INSERT a row with at least `symbol` + `name`.
+
+3. **Run the publisher:**
+
+```bash
+cd G:/Earnings\ Canvas/repo
+python scripts/publish_from_markdown.py path/to/COMPANY_QXFYY.md
+```
+
+For dry run (parse + summarise, no DB write):
+```bash
+python scripts/publish_from_markdown.py path/to/COMPANY_QXFYY.md --dry-run
+```
+
+The page is live at `https://earningscanvas.in/company/{SYMBOL}/{QUARTER-SLUG}`
+within seconds of running (Next.js ISR fetches fresh on next request).
+
+### What the publisher parses
+
+The publisher (`scripts/publish_from_markdown.py`) reads each `## Section`
+of the markdown and maps it to the rich-report schema:
+
+| Markdown section          | DB field(s)                          |
+|---------------------------|--------------------------------------|
+| `# Title · Quarter`       | `companies.symbol`, `quarter`        |
+| `## TL;DR`                | `verdict_score`, `investment_signal`, `verdict_summary`, `summary` |
+| `## The 60-second read`   | `report_highlights`                  |
+| `## Headline numbers`     | `key_numbers`, `revenue_act`, `pat_act`, `ebitda_act`, `*_yoy_pct`, `annual_context` |
+| `## Segment scorecard`    | `segments`                           |
+| `## {Segment} · {label}`  | `segment_narratives` (one entry each)|
+| `## Strategic threads`    | `strategic_threads` (each `### Title` block) |
+| `## What management said` | `key_quotes`                         |
+| `## Concall Q&A`          | `dodged_questions` (watchlist mode)  |
+| `## Forward tracker`      | `next_quarter_watchlist`             |
+| `## Sector echo`          | `sector_echo`                        |
+| `## Trade idea`           | `trade_idea`                         |
+| `## NSE corporate announcements` | `recent_announcements`        |
+| `## Bottom line`          | `bottom_line`                        |
+| `## Distribution copy`    | `distribution_copy`                  |
+
+`result_status` is auto-derived from the verdict column in the headline
+numbers table (BEAT/MISS/IN LINE).
+
+### Idempotency
+
+Re-running the publisher on the same file upserts on `(company_id, quarter)`.
+Empty/missing sections are filtered out before upsert — so partial markdown
+won't wipe fields populated by other means (manual seeds, future LLM passes).
+
+### Adding a new company
+
+```bash
+# 1. Insert the company in Supabase via REST
+curl -X POST "https://pnmioozueiudekegjbql.supabase.co/rest/v1/companies" \
+  -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"TCS","name":"Tata Consultancy Services","sector":"IT Services","screener_slug":"TCS"}'
+
+# 2. Drop the markdown article in the right place + run publisher
+python scripts/publish_from_markdown.py outputs/TCS_Q4FY26.md
+```
+
 ## When resuming
 
 Good first message for next session:
