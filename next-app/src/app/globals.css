@@ -8,15 +8,108 @@
   --color-border: rgba(255, 255, 255, 0.08);
 }
 
+html.light {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: rgba(0, 0, 0, 0.08);
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   background: var(--color-bg);
+  color: #18181b;
   font-feature-settings: "tnum";
+}
+
+html.dark body {
+  color: #f4f4f5;
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* ───── Light mode overrides ─────
+   Most components use raw zinc/white-alpha utilities (bg-zinc-950,
+   text-zinc-100, border-white/5, etc.) so we override them for the
+   .light theme rather than refactor every component. */
+
+@layer utilities {
+  html.light body {
+    background: #fafafa;
+  }
+
+  /* Surfaces */
+  html.light .bg-zinc-950 { background-color: #fafafa; }
+  html.light .bg-zinc-950\/80 { background-color: rgba(250, 250, 250, 0.85); }
+  html.light .bg-zinc-950\/95 { background-color: rgba(250, 250, 250, 0.95); }
+  html.light .bg-zinc-900 { background-color: #ffffff; }
+  html.light .bg-zinc-900\/40 { background-color: rgba(255, 255, 255, 0.7); }
+  html.light .bg-zinc-900\/50 { background-color: rgba(255, 255, 255, 0.7); }
+  html.light .bg-zinc-900\/60 { background-color: rgba(255, 255, 255, 0.85); }
+  html.light .bg-zinc-900\/80 { background-color: rgba(255, 255, 255, 0.9); }
+  html.light .bg-zinc-800 { background-color: #f4f4f5; }
+  html.light .bg-zinc-800\/70 { background-color: rgba(244, 244, 245, 0.7); }
+  html.light .bg-zinc-800\/80 { background-color: rgba(244, 244, 245, 0.8); }
+
+  /* Text */
+  html.light .text-white { color: #09090b; }
+  html.light .text-zinc-100 { color: #18181b; }
+  html.light .text-zinc-200 { color: #27272a; }
+  html.light .text-zinc-300 { color: #3f3f46; }
+  html.light .text-zinc-400 { color: #52525b; }
+  html.light .text-zinc-500 { color: #71717a; }
+  html.light .text-zinc-600 { color: #a1a1aa; }
+
+  /* Borders + dividers (white-alpha → black-alpha) */
+  html.light .border-white\/5 { border-color: rgba(0, 0, 0, 0.06); }
+  html.light .border-white\/10 { border-color: rgba(0, 0, 0, 0.1); }
+  html.light .border-white\/20 { border-color: rgba(0, 0, 0, 0.16); }
+  html.light .border-zinc-700 { border-color: #d4d4d8; }
+
+  /* Backdrop white-alpha → black-alpha */
+  html.light .bg-white\/5 { background-color: rgba(0, 0, 0, 0.04); }
+  html.light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.06); }
+
+  /* Hover overlays */
+  html.light .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.04); }
+  html.light .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.06); }
+  html.light .hover\:border-white\/10:hover { border-color: rgba(0, 0, 0, 0.1); }
+  html.light .hover\:border-white\/20:hover { border-color: rgba(0, 0, 0, 0.16); }
+
+  /* Markdown blockquote in light */
+  html.light .border-emerald-400\/40 { border-color: rgba(16, 185, 129, 0.5); }
+  html.light .border-emerald-400\/30 { border-color: rgba(16, 185, 129, 0.4); }
+
+  /* Backdrop overlays for drawer */
+  html.light .bg-black\/60 { background-color: rgba(0, 0, 0, 0.4); }
+
+  /* Gradient backgrounds */
+  html.light .from-zinc-900\/80 {
+    --tw-gradient-from: rgba(255, 255, 255, 0.95) var(--tw-gradient-from-position);
+    --tw-gradient-to: rgba(255, 255, 255, 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  html.light .to-zinc-950 {
+    --tw-gradient-to: #fafafa var(--tw-gradient-to-position);
+  }
+
+  /* Tinted accent fills — slightly stronger in light to maintain contrast */
+  html.light .bg-emerald-400\/10 { background-color: rgba(16, 185, 129, 0.12); }
+  html.light .bg-red-400\/10 { background-color: rgba(248, 113, 113, 0.12); }
+  html.light .bg-amber-400\/10 { background-color: rgba(251, 191, 36, 0.14); }
+  html.light .bg-zinc-400\/10 { background-color: rgba(0, 0, 0, 0.05); }
+
+  /* Slightly darken accent text in light for AA contrast */
+  html.light .text-emerald-400 { color: #047857; }
+  html.light .text-red-400 { color: #dc2626; }
+  html.light .text-amber-400 { color: #b45309; }
+  html.light .text-blue-400 { color: #2563eb; }
+  html.light .text-emerald-300 { color: #059669; }
+
+  /* Code styles */
+  html.light code { color: #047857; background-color: rgba(16, 185, 129, 0.1); }
 }

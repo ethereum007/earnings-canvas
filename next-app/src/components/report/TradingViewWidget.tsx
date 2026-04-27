@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 
 /**
  * Minimal TradingView "Advanced Chart" embed.
@@ -15,14 +16,17 @@ export default function TradingViewWidget({
   interval?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    container.innerHTML = ""; // reset on symbol change
+    container.innerHTML = ""; // reset on symbol/theme change
 
+    const isDark = resolvedTheme !== "light";
     const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.src =
+      "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.async = true;
     script.type = "text/javascript";
     script.innerHTML = JSON.stringify({
@@ -30,7 +34,7 @@ export default function TradingViewWidget({
       symbol,
       interval,
       timezone: "Asia/Kolkata",
-      theme: "dark",
+      theme: isDark ? "dark" : "light",
       style: "1",
       locale: "in",
       enable_publishing: false,
@@ -38,12 +42,12 @@ export default function TradingViewWidget({
       hide_top_toolbar: false,
       hide_legend: false,
       save_image: false,
-      backgroundColor: "#09090b",
-      gridColor: "rgba(255,255,255,0.05)",
+      backgroundColor: isDark ? "#09090b" : "#ffffff",
+      gridColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
       support_host: "https://www.tradingview.com",
     });
     container.appendChild(script);
-  }, [symbol, interval]);
+  }, [symbol, interval, resolvedTheme]);
 
   return (
     <div
