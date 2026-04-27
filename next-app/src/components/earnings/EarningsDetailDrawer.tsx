@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { EarningsSeasonRow } from "@/types/earnings";
-import { X } from "lucide-react";
+import { X, ExternalLink } from "lucide-react";
 import { cn, resultStatusColor } from "@/lib/utils";
+import { companyHref } from "@/lib/slug";
 import TabPrint from "./tabs/TabPrint";
 import TabKPI from "./tabs/TabKPI";
 import TabMgmt from "./tabs/TabMgmt";
@@ -53,13 +55,23 @@ export default function EarningsDetailDrawer({
               {company.sector ?? "—"} · {company.quarter}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              href={companyHref(company.symbol, company.quarter)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/5 border border-white/10 transition-colors flex items-center gap-1.5"
+              title="Open full analysis page"
+            >
+              Full page
+              <ExternalLink size={12} />
+            </Link>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="border-b border-white/5 px-6 flex gap-0 overflow-x-auto">
