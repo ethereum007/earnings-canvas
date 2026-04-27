@@ -78,6 +78,92 @@ export interface EarningsSeasonRow {
   transcript_url: string | null;
   recording_url: string | null;
   ppt_url: string | null;
+
+  // Rich report fields (Phase 2A+) — null/empty for legacy rows
+  report_highlights?: ReportHighlight[] | null;
+  annual_context?: AnnualContext | null;
+  segments?: SegmentRow[] | null;
+  segment_narratives?: SegmentNarrative[] | null;
+  key_quotes?: KeyQuote[] | null;
+  sector_echo?: SectorEchoItem[] | null;
+  trade_idea?: TradeIdea | null;
+  recent_announcements?: Announcement[] | null;
+  long_form_intro?: string | null;
+}
+
+// ───── Rich report types (Phase 2A+) ─────
+
+export type HighlightKind = "worked" | "broke" | "disclosure" | "capital";
+
+export interface ReportHighlight {
+  kind: HighlightKind;
+  text: string;
+}
+
+export interface AnnualContextMetric {
+  label: string;
+  value: string;
+  yoy_pct?: number;
+}
+
+export interface AnnualContext {
+  fiscal_year: string;
+  label?: string;
+  metrics: AnnualContextMetric[];
+  caveat?: string;
+}
+
+export type SegmentColor = "green" | "red" | "amber" | "gray";
+
+export interface SegmentRow {
+  name: string;
+  ebitda: string;
+  yoy_pct?: number;
+  color: SegmentColor;
+  note?: string;
+}
+
+export interface SegmentNarrative {
+  segment: string;
+  label?: string;
+  body_md: string;
+}
+
+export interface KeyQuote {
+  speaker: string;
+  title?: string;
+  quote: string;
+  interpretation?: string;
+}
+
+export interface SectorEchoItem {
+  ticker: string;
+  name?: string;
+  color: "green" | "red" | "amber";
+  note: string;
+}
+
+export interface TradeIdeaTarget {
+  price: string;
+  upside_pct?: number;
+  catalyst?: string;
+}
+
+export interface TradeIdea {
+  setup: string;
+  entry: string;
+  stop_loss: string;
+  targets: TradeIdeaTarget[];
+  risk_reward?: string;
+  sizing?: string;
+  hedge?: string;
+  view_horizon?: string;
+  verify_levels?: boolean;
+}
+
+export interface Announcement {
+  date: string;
+  text: string;
 }
 
 export interface SeasonSummary {

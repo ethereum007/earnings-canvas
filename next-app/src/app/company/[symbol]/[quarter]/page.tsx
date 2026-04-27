@@ -6,11 +6,24 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { EarningsSeasonRow } from "@/types/earnings";
 import { cn, resultStatusColor } from "@/lib/utils";
 import { quarterToSlug, slugToQuarter } from "@/lib/slug";
+
 import TabPrint from "@/components/earnings/tabs/TabPrint";
 import TabKPI from "@/components/earnings/tabs/TabKPI";
 import TabMgmt from "@/components/earnings/tabs/TabMgmt";
 import TabVerdict from "@/components/earnings/tabs/TabVerdict";
 import StickyTOC from "@/components/company/StickyTOC";
+
+import VerdictTLDR from "@/components/report/VerdictTLDR";
+import ReportHighlights from "@/components/report/ReportHighlights";
+import AnnualContextSection from "@/components/report/AnnualContext";
+import SegmentScorecard from "@/components/report/SegmentScorecard";
+import SegmentNarratives from "@/components/report/SegmentNarratives";
+import KeyQuotes from "@/components/report/KeyQuotes";
+import SectorEcho from "@/components/report/SectorEcho";
+import TradeIdeaCard from "@/components/report/TradeIdea";
+import RecentAnnouncements from "@/components/report/RecentAnnouncements";
+import TradingViewWidget from "@/components/report/TradingViewWidget";
+import Markdown from "@/components/markdown/Markdown";
 
 export const revalidate = 600; // 10 min ISR
 
@@ -46,14 +59,12 @@ export async function generateMetadata({
   const quarter = slugToQuarter(params.quarter);
   const co = await fetchCompany(symbol, quarter);
 
-  if (!co) {
-    return { title: `${symbol} ${quarter} | EarningsCanvas` };
-  }
+  if (!co) return { title: `${symbol} ${quarter} | EarningsCanvas` };
 
   const title = `${co.company} — ${quarter} Results | EarningsCanvas`;
   const description =
-    co.analysis_summary ||
     co.verdict_summary ||
+    co.analysis_summary ||
     `${co.company} (${co.symbol}) ${quarter} earnings analysis — sector KPIs, management commentary, analyst verdict.`;
 
   const score =
@@ -95,13 +106,6 @@ export async function generateMetadata({
   };
 }
 
-const SECTIONS = [
-  { id: "print", title: "Earnings print" },
-  { id: "kpis", title: "Sector KPIs" },
-  { id: "mgmt", title: "Management call" },
-  { id: "verdict", title: "Verdict" },
-] as const;
-
 export default async function CompanyQuarterPage({
   params,
 }: {
@@ -111,6 +115,50 @@ export default async function CompanyQuarterPage({
   const quarter = slugToQuarter(params.quarter);
   const co = await fetchCompany(symbol, quarter);
   if (!co) notFound();
+
+  // Decide layout: rich if any of the new fields populated, else legacy 4-section
+  const hasRich = Boolean(
+    (co.report_highlights && co.report_highlights.length) ||
+      co.annual_context ||
+      (co.segments && co.segments.length) ||
+      (co.segment_narratives && co.segment_narratives.length) ||
+      (co.key_quotes && co.key_quotes.length) ||
+      (co.sector_echo && co.sector_echo.length) ||
+      co.trade_idea ||
+      (co.recent_announcements && co.recent_announcements.length) ||
+      co.long_form_intro
+  );
+
+  // Build TOC dynamically from sections that will actually render
+  const sections: { id: string; title: string }[] = [];
+  if (hasRich) {
+    if (co.long_form_intro) sections.push({ id: "intro", title: "TL;DR" });
+    if (co.report_highlights?.length)
+      sections.push({ id: "highlights", title: "60-second read" });
+    sections.push({ id: "print", title: "Headline numbers" });
+    if (co.annual_context)
+      sections.push({ id: "annual", title: "Annual context" });
+    if (co.segments?.length)
+      sections.push({ id: "segments", title: "Segment scorecard" });
+    if (co.segment_narratives?.length)
+      sections.push({ id: "deepdives", title: "Segment deep-dives" });
+    if (co.key_quotes?.length)
+      sections.push({ id: "mgmt", title: "Management call" });
+    sections.push({ id: "verdict", title: "Verdict" });
+    if (co.sector_echo?.length)
+      sections.push({ id: "echo", title: "Sector echo" });
+    if (co.trade_idea) sections.push({ id: "trade", title: "Trade idea" });
+    sections.push({ id: "chart", title: "Live chart" });
+    if (co.recent_announcements?.length)
+      sections.push({ id: "announcements", title: "Announcements" });
+  } else {
+    sections.push(
+      { id: "print", title: "Earnings print" },
+      { id: "kpis", title: "Sector KPIs" },
+      { id: "mgmt", title: "Management call" },
+      { id: "verdict", title: "Verdict" }
+    );
+  }
 
   return (
     <article className="py-8 lg:py-12">
@@ -136,9 +184,14 @@ export default async function CompanyQuarterPage({
           <div>
             <h1 className="text-3xl lg:text-4xl font-medium text-white tracking-tight">
               {co.company}
+              <span className="text-zinc-500 font-normal text-lg lg:text-xl ml-3">
+                · {quarter}
+              </span>
             </h1>
-            <div className="mt-2 flex items-center gap-3 text-sm text-zinc-500">
-              <span className="font-mono text-emerald-400">{co.symbol}</span>
+            <div className="mt-2 flex items-center gap-3 text-sm text-zinc-500 flex-wrap">
+              <span className="font-mono text-emerald-400">
+                NSE: {co.symbol}
+              </span>
               <span>·</span>
               <span>{co.sector ?? "—"}</span>
               {co.market_cap && (
@@ -147,8 +200,19 @@ export default async function CompanyQuarterPage({
                   <span>{co.market_cap}</span>
                 </>
               )}
-              <span>·</span>
-              <span className="text-zinc-300">{quarter}</span>
+              {co.result_date && (
+                <>
+                  <span>·</span>
+                  <span>
+                    Reported{" "}
+                    {new Date(co.result_date).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <span
@@ -160,40 +224,145 @@ export default async function CompanyQuarterPage({
             {co.result_status}
           </span>
         </div>
-
-        {(co.analysis_summary || co.verdict_summary) && (
-          <p className="mt-6 text-base text-zinc-300 leading-relaxed max-w-3xl">
-            {co.analysis_summary || co.verdict_summary}
-          </p>
-        )}
-
-        {co.investment_signal && (
-          <div className="mt-4 inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md bg-white/5 border border-white/10">
-            <span className="text-zinc-500 uppercase tracking-wider">
-              Signal
-            </span>
-            <span className="text-white font-medium">
-              {co.investment_signal}
-            </span>
-          </div>
-        )}
       </header>
 
       <div className="lg:grid lg:grid-cols-[1fr_180px] lg:gap-12">
         <div className="space-y-12 min-w-0">
-          {SECTIONS.map((s) => (
-            <section key={s.id} id={s.id} className="scroll-mt-20">
-              <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
-                {s.title}
-              </h2>
-              {s.id === "print" && <TabPrint company={co} />}
-              {s.id === "kpis" && <TabKPI company={co} />}
-              {s.id === "mgmt" && <TabMgmt company={co} />}
-              {s.id === "verdict" && <TabVerdict company={co} />}
-            </section>
-          ))}
+          {hasRich ? (
+            <>
+              {/* TL;DR hero card — always shown for rich pages */}
+              <VerdictTLDR co={co} />
 
-          {/* Footer links */}
+              {co.long_form_intro && (
+                <section id="intro" className="scroll-mt-20">
+                  <Markdown>{co.long_form_intro}</Markdown>
+                </section>
+              )}
+
+              {co.report_highlights?.length ? (
+                <section id="highlights" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    The 60-second read
+                  </h2>
+                  <ReportHighlights highlights={co.report_highlights} />
+                </section>
+              ) : null}
+
+              <section id="print" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Headline numbers
+                </h2>
+                <TabPrint company={co} />
+              </section>
+
+              {co.annual_context && (
+                <section id="annual" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Annual context
+                  </h2>
+                  <AnnualContextSection ctx={co.annual_context} />
+                </section>
+              )}
+
+              {co.segments?.length ? (
+                <section id="segments" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Segment scorecard
+                  </h2>
+                  <SegmentScorecard segments={co.segments} />
+                </section>
+              ) : null}
+
+              {co.segment_narratives?.length ? (
+                <section id="deepdives" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Segment deep-dives
+                  </h2>
+                  <SegmentNarratives narratives={co.segment_narratives} />
+                </section>
+              ) : null}
+
+              {co.key_quotes?.length ? (
+                <section id="mgmt" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Management call
+                  </h2>
+                  <KeyQuotes quotes={co.key_quotes} />
+                </section>
+              ) : null}
+
+              <section id="verdict" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Verdict
+                </h2>
+                <TabVerdict company={co} />
+              </section>
+
+              {co.sector_echo?.length ? (
+                <section id="echo" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Sector echo
+                  </h2>
+                  <SectorEcho items={co.sector_echo} />
+                </section>
+              ) : null}
+
+              {co.trade_idea && (
+                <section id="trade" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Trade idea
+                  </h2>
+                  <TradeIdeaCard trade={co.trade_idea} />
+                </section>
+              )}
+
+              <section id="chart" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Live chart
+                </h2>
+                <TradingViewWidget symbol={`NSE:${co.symbol}`} />
+              </section>
+
+              {co.recent_announcements?.length ? (
+                <section id="announcements" className="scroll-mt-20">
+                  <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                    Recent announcements
+                  </h2>
+                  <RecentAnnouncements items={co.recent_announcements} />
+                </section>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {/* Legacy 4-section layout */}
+              <section id="print" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Earnings print
+                </h2>
+                <TabPrint company={co} />
+              </section>
+              <section id="kpis" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Sector KPIs
+                </h2>
+                <TabKPI company={co} />
+              </section>
+              <section id="mgmt" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Management call
+                </h2>
+                <TabMgmt company={co} />
+              </section>
+              <section id="verdict" className="scroll-mt-20">
+                <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-5">
+                  Verdict
+                </h2>
+                <TabVerdict company={co} />
+              </section>
+            </>
+          )}
+
+          {/* Footer source links */}
           <footer className="pt-10 border-t border-white/5 flex flex-wrap items-center gap-4 text-xs text-zinc-500">
             <span>Sources:</span>
             {co.transcript_url && (
@@ -213,7 +382,7 @@ export default async function CompanyQuarterPage({
                 rel="noreferrer"
                 className="text-zinc-300 hover:text-white underline-offset-2 hover:underline"
               >
-                Earnings call recording ↗
+                Recording ↗
               </a>
             )}
             {co.ppt_url && (
@@ -227,14 +396,15 @@ export default async function CompanyQuarterPage({
               </a>
             )}
             {!co.transcript_url && !co.recording_url && !co.ppt_url && (
-              <span className="text-zinc-600">No public sources linked yet.</span>
+              <span className="text-zinc-600">
+                No public sources linked yet.
+              </span>
             )}
           </footer>
         </div>
 
-        {/* Sticky TOC for desktop */}
         <aside className="hidden lg:block">
-          <StickyTOC sections={SECTIONS} />
+          <StickyTOC sections={sections} />
         </aside>
       </div>
     </article>
