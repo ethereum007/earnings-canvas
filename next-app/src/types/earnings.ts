@@ -89,6 +89,8 @@ export interface EarningsSeasonRow {
   trade_idea?: TradeIdea | null;
   recent_announcements?: Announcement[] | null;
   long_form_intro?: string | null;
+  bottom_line?: BottomLineItem[] | null;
+  distribution_copy?: DistributionCopy | null;
 }
 
 // ───── Rich report types (Phase 2A+) ─────
@@ -123,9 +125,17 @@ export interface SegmentRow {
   note?: string;
 }
 
+export interface SegmentKeyStat {
+  label: string;
+  value: string;
+  sub?: string;        // e.g. '+36 Mn YoY'
+  positive?: boolean;  // colors the sub-line
+}
+
 export interface SegmentNarrative {
   segment: string;
   label?: string;
+  key_stats?: SegmentKeyStat[]; // 3-up giant stat blocks above the prose
   body_md: string;
 }
 
@@ -164,6 +174,17 @@ export interface TradeIdea {
 export interface Announcement {
   date: string;
   text: string;
+}
+
+export interface BottomLineItem {
+  emoji: string;
+  text: string;
+}
+
+export interface DistributionCopy {
+  twitter?: string[];   // array of tweets in thread order
+  linkedin?: string;    // single long-form post (markdown allowed)
+  whatsapp?: string;    // single broadcast snippet
 }
 
 export interface SeasonSummary {

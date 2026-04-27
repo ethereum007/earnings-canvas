@@ -32,6 +32,19 @@ html.dark body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Editorial drop cap for the lead long-form intro paragraph */
+.drop-cap > p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.5em;
+  line-height: 0.9;
+  font-weight: 500;
+  margin: 0.05em 0.12em 0 0;
+  color: #ffffff;
+}
+html.light .drop-cap > p:first-of-type::first-letter {
+  color: #09090b;
+}
+
 /* ───── Light mode overrides ─────
    Most components use raw zinc/white-alpha utilities (bg-zinc-950,
    text-zinc-100, border-white/5, etc.) so we override them for the

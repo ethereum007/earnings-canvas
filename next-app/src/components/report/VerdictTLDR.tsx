@@ -2,8 +2,8 @@ import type { EarningsSeasonRow } from "@/types/earnings";
 import { cn } from "@/lib/utils";
 
 /**
- * Hero TL;DR card — the verdict + conviction + signal at the top.
- * Pulls from existing fields (verdict_score, verdict_summary, investment_signal).
+ * Banner-style hero TL;DR. The verdict + conviction + signal — designed
+ * to be impossible to miss at the top of the page.
  */
 export default function VerdictTLDR({ co }: { co: EarningsSeasonRow }) {
   const rawScore = co.verdict_score ?? co.sentiment_score ?? 0;
@@ -13,36 +13,63 @@ export default function VerdictTLDR({ co }: { co: EarningsSeasonRow }) {
   if (!summary && !co.investment_signal && score === 0) return null;
 
   const signal = (co.investment_signal ?? "").toUpperCase();
-  const signalColor =
-    signal.includes("BUY")
-      ? "text-emerald-400 border-emerald-400/40 bg-emerald-400/10"
-      : signal.includes("SELL")
-        ? "text-red-400 border-red-400/40 bg-red-400/10"
-        : "text-amber-400 border-amber-400/40 bg-amber-400/10";
+  const accentColor = signal.includes("BUY")
+    ? "border-emerald-400/40 from-emerald-400/10"
+    : signal.includes("SELL")
+      ? "border-red-400/40 from-red-400/10"
+      : "border-amber-400/40 from-amber-400/10";
+
+  const signalText = signal.includes("BUY")
+    ? "text-emerald-400"
+    : signal.includes("SELL")
+      ? "text-red-400"
+      : "text-amber-400";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/80 to-zinc-950 p-6 lg:p-8">
-      <div className="flex items-center gap-3 mb-3 text-xs text-zinc-500 uppercase tracking-wider">
-        <span>TL;DR</span>
-        {co.investment_signal && (
+    <div
+      className={cn(
+        "rounded-2xl border p-7 lg:p-10 bg-gradient-to-br to-zinc-950",
+        accentColor
+      )}
+    >
+      <div className="flex items-baseline gap-3 mb-5 text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+        <span>The verdict</span>
+        <span className="h-px flex-1 bg-white/5" />
+        <span>EarningsCanvas read</span>
+      </div>
+
+      {/* Verdict line */}
+      {co.investment_signal && (
+        <div className="mb-6 flex items-baseline gap-4 flex-wrap">
           <span
             className={cn(
-              "px-2 py-0.5 rounded-full border text-[11px] font-medium normal-case",
-              signalColor
+              "text-4xl lg:text-5xl font-medium tracking-tight",
+              signalText
             )}
           >
             {co.investment_signal}
           </span>
-        )}
-        {score > 0 && (
-          <span className="text-zinc-500">
-            Conviction <span className="text-white">{score.toFixed(1)}/10</span>
-          </span>
-        )}
-      </div>
+          {score > 0 && (
+            <span className="text-zinc-500 text-base lg:text-lg">
+              · Conviction
+              <span className="ml-2 text-white font-medium tabular-nums">
+                {score.toFixed(1)}
+                <span className="text-zinc-600">/10</span>
+              </span>
+            </span>
+          )}
+        </div>
+      )}
+
       {summary && (
-        <p className="text-lg lg:text-xl text-white leading-relaxed">
+        <p className="text-xl lg:text-2xl text-zinc-100 leading-snug max-w-4xl">
           {summary}
+        </p>
+      )}
+
+      {co.signal_rationale && (
+        <p className="mt-4 text-sm text-zinc-400 max-w-3xl leading-relaxed">
+          {co.signal_rationale}
         </p>
       )}
     </div>
