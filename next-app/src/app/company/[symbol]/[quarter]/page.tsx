@@ -23,6 +23,8 @@ import RecentAnnouncements from "@/components/report/RecentAnnouncements";
 import TradingViewWidget from "@/components/report/TradingViewWidget";
 import BottomLine from "@/components/report/BottomLine";
 import DistributionCopyPanel from "@/components/report/DistributionCopyPanel";
+import StrategicThreads from "@/components/report/StrategicThreads";
+import ConcallQAIntel from "@/components/report/ConcallQAIntel";
 import Markdown from "@/components/markdown/Markdown";
 import TabKPI from "@/components/earnings/tabs/TabKPI";
 import TabPrint from "@/components/earnings/tabs/TabPrint";
@@ -133,6 +135,9 @@ export default async function CompanyQuarterPage({
       ) as string[]
     : [];
 
+  const strategicThreads = co.strategic_threads ?? [];
+  const concallQA = co.concall_qa ?? [];
+
   // Forward tracker
   const forwardTracker = Array.isArray(co.next_quarter_watchlist)
     ? (co.next_quarter_watchlist as Array<{
@@ -161,8 +166,9 @@ export default async function CompanyQuarterPage({
     if (co.segments?.length) push("segments", "Segment scorecard");
     if (co.segment_narratives?.length) push("deepdives", "Segment deep-dives");
     if (sectorKpis.length) push("kpis", "Sector KPIs");
+    if (strategicThreads.length) push("threads", "Strategic threads");
     if (co.key_quotes?.length) push("mgmt", "Management call");
-    if (watchlistQs.length) push("qa", "Q&A intelligence");
+    if (concallQA.length || watchlistQs.length) push("qa", "Q&A intelligence");
     if (forwardTracker.length) push("forward", "Forward tracker");
     if (co.sector_echo?.length) push("echo", "Sector echo");
     if (co.trade_idea) push("trade", "Trade idea");
@@ -321,7 +327,17 @@ export default async function CompanyQuarterPage({
                 </section>
               ) : null}
 
-              {/* 09 · Management call */}
+              {/* 09 · Strategic threads — the institutional synthesis layer */}
+              {strategicThreads.length ? (
+                <section id="threads" className="scroll-mt-20">
+                  <SectionHeading num={next()}>
+                    Strategic threads — connecting the dots
+                  </SectionHeading>
+                  <StrategicThreads threads={strategicThreads} />
+                </section>
+              ) : null}
+
+              {/* 10 · Management call */}
               {co.key_quotes?.length ? (
                 <section id="mgmt" className="scroll-mt-20">
                   <SectionHeading num={next()}>What management said</SectionHeading>
@@ -329,12 +345,17 @@ export default async function CompanyQuarterPage({
                 </section>
               ) : null}
 
-              {/* 10 · Q&A intelligence */}
-              {watchlistQs.length ? (
+              {/* 11 · Q&A intelligence — structured if transcript present, else watchlist */}
+              {concallQA.length ? (
+                <section id="qa" className="scroll-mt-20">
+                  <SectionHeading num={next()}>Concall Q&amp;A intelligence</SectionHeading>
+                  <ConcallQAIntel items={concallQA} />
+                </section>
+              ) : watchlistQs.length ? (
                 <section id="qa" className="scroll-mt-20">
                   <SectionHeading num={next()}>Concall Q&amp;A intelligence</SectionHeading>
                   <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-5 mb-4 text-sm text-amber-300">
-                    🕐 Transcript drops in 24–48 hours. Page will be updated.
+                    🕐 Transcript drops in 24–48 hours. Page will be updated with Q&A breakdown — analyst questions, management answers, deflection flags, and EarningsCanvas interpretation.
                   </div>
                   <div className="text-xs text-zinc-500 uppercase tracking-[0.18em] mb-3">
                     Watchlist questions for the call
