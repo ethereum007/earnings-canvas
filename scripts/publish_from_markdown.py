@@ -608,6 +608,120 @@ def parse_strategic_threads(body: str) -> list[dict[str, Any]]:
     return out
 
 
+def parse_snapshot(body: str) -> dict[str, Any]:
+    """
+    Parse '## Snapshot' section. Recognised keys (any subset):
+
+      Headline basis: OPERATIONAL | REPORTED
+      Guidance: RAISED | MAINTAINED | CUT | WITHDRAWN | NOT_GIVEN
+      Estimate revision: UP|FLAT|DOWN, magnitude LT_2|2_TO_5|GT_5, metric "FY27 EPS"
+      Stock reaction: +2.4% (+1.8% vs Nifty IT)
+      Position bias: BUY | ADD | HOLD | REDUCE | SELL | UNDER_REVIEW
+      Conviction: HIGH | MEDIUM | LOW
+      Next catalyst: 2026-07-10 — Q1 FY27 results
+      Rollup: POSITIVE | MIXED | NEGATIVE | NEUTRAL — short oneliner
+      Three things that mattered:
+        - thing one
+        - thing two
+        - thing three
+    """
+    out: dict[str, Any] = {}
+    if not body.strip():
+        return out
+
+    def grab(key: str) -> str | None:
+        m = re.search(
+            rf"\*\*{re.escape(key)}:\*\*\s*(.+?)(?=\n\s*\*\*|\Z)",
+            body,
+            re.DOTALL | re.IGNORECASE,
+        )
+        return m.group(1).strip() if m else None
+
+    if v := grab("Headline basis"):
+        v = v.upper().strip(" .")
+        if v in ("OPERATIONAL", "REPORTED"):
+            out["headline_verdict_basis"] = v
+
+    if v := grab("Guidance"):
+        v = v.upper().strip(" .").replace(" ", "_")
+        if v in ("RAISED", "MAINTAINED", "CUT", "WITHDRAWN", "NOT_GIVEN", "N/A"):
+            out["guidance_verdict"] = "NOT_GIVEN" if v == "N/A" else v
+
+    if v := grab("Estimate revision"):
+        # e.g. "UP, 2-5%, FY27 EPS"  or  "UP · 2_TO_5 · FY27 EPS"
+        parts = [p.strip() for p in re.split(r"[,·]", v)]
+        if parts:
+            d = parts[0].upper()
+            if d in ("UP", "FLAT", "DOWN"):
+                out["estimate_revision_direction"] = d
+        if len(parts) >= 2:
+            mag = parts[1].upper().replace("-", "_TO_").replace("%", "").strip()
+            mag = mag.replace("_TO__TO_", "_TO_")
+            mag_map = {
+                "<2": "LT_2", "LT_2": "LT_2",
+                "2_TO_5": "2_TO_5", "2_5": "2_TO_5",
+                ">5": "GT_5", "GT_5": "GT_5",
+            }
+            if mag in mag_map:
+                out["estimate_revision_magnitude"] = mag_map[mag]
+        if len(parts) >= 3:
+            out["estimate_revision_metric"] = parts[2]
+
+    if v := grab("Stock reaction"):
+        # e.g. "+2.4% (+1.8% vs Nifty IT)"
+        m = re.match(r"\s*([+-]?\d+(?:\.\d+)?)%\s*(?:\(([+-]?\d+(?:\.\d+)?)%\s*vs\s*(.+?)\))?", v)
+        if m:
+            out["stock_reaction_pct"] = float(m.group(1))
+            if m.group(2):
+                out["stock_reaction_vs_index_pct"] = float(m.group(2))
+            if m.group(3):
+                out["stock_reaction_index_name"] = m.group(3).strip()
+
+    if v := grab("Position bias"):
+        v = v.upper().strip(" .").replace(" ", "_")
+        if v in ("BUY", "ADD", "HOLD", "REDUCE", "SELL", "UNDER_REVIEW"):
+            out["position_bias"] = v
+
+    if v := grab("Conviction"):
+        v = v.upper().strip(" .")
+        if v in ("HIGH", "MEDIUM", "LOW"):
+            out["conviction"] = v
+
+    if v := grab("Next catalyst"):
+        # e.g. "2026-07-10 — Q1 FY27 results"  or "Q1 FY27 results"
+        m = re.match(r"\s*(\d{4}-\d{2}-\d{2})\s*[—–-]\s*(.+)", v)
+        if m:
+            out["next_catalyst_date"] = m.group(1)
+            out["next_catalyst_event"] = m.group(2).strip()
+        else:
+            out["next_catalyst_event"] = v.strip()
+
+    if v := grab("Rollup"):
+        # e.g. "POSITIVE — short oneliner"
+        m = re.match(r"\s*(POSITIVE|MIXED|NEGATIVE|NEUTRAL)\s*[—–-]?\s*(.*)", v, re.IGNORECASE)
+        if m:
+            out["rollup_verdict"] = m.group(1).upper()
+            if m.group(2).strip():
+                out["rollup_verdict_oneliner"] = m.group(2).strip()
+
+    # Three things that mattered — bulleted list
+    tm = re.search(
+        r"\*\*Three things that mattered:\*\*\s*\n((?:^\s*-\s+.+\n?)+)",
+        body,
+        re.MULTILINE,
+    )
+    if tm:
+        items = []
+        for line in tm.group(1).splitlines():
+            lm = re.match(r"^\s*-\s+(.+)$", line)
+            if lm:
+                items.append(lm.group(1).strip())
+        if items:
+            out["three_things_that_mattered"] = items[:3]
+
+    return out
+
+
 def parse_distribution(body: str) -> dict[str, Any] | None:
     """Parse 'Distribution copy' subsections."""
     if not body.strip():
@@ -655,6 +769,7 @@ def parse_markdown(md: str) -> dict[str, Any]:
     bottom = parse_bottom_line(find_section(sections, "Bottom line"))
     threads = parse_strategic_threads(find_section(sections, "Strategic threads"))
     distribution = parse_distribution(find_section(sections, "Distribution copy"))
+    snapshot = parse_snapshot(find_section(sections, "Snapshot"))
 
     return {
         "header": header,
@@ -672,6 +787,7 @@ def parse_markdown(md: str) -> dict[str, Any]:
         "bottom": bottom,
         "threads": threads,
         "distribution": distribution,
+        "snapshot": snapshot,
     }
 
 
@@ -766,6 +882,8 @@ def publish(parsed: dict[str, Any], dry_run: bool = False) -> str:
         "bottom_line": parsed["bottom"],
         "strategic_threads": parsed["threads"],
         "distribution_copy": parsed["distribution"],
+        # Snapshot card fields (each may or may not be present)
+        **parsed["snapshot"],
     }
     analysis_row = {k: v for k, v in analysis_row.items() if v not in (None, [], "", {})}
 
@@ -786,6 +904,8 @@ def publish(parsed: dict[str, Any], dry_run: bool = False) -> str:
         print(f"Bottom line: {len(parsed['bottom'])}")
         print(f"Trade idea: {'yes' if parsed['trade'] else 'no'}")
         print(f"Distribution: {list(parsed['distribution'].keys()) if parsed['distribution'] else 'none'}")
+        snap = parsed["snapshot"]
+        print(f"Snapshot: {len(snap)} fields — keys={list(snap.keys())}")
         return f"/company/{symbol}/{quarter.replace(' ', '-')}"
 
     print(f"Upserting earnings_season for {symbol} {quarter}…")

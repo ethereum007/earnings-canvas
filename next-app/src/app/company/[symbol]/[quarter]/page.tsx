@@ -11,6 +11,8 @@ import StickyTOC from "@/components/company/StickyTOC";
 import SectionHeading from "@/components/report/SectionHeading";
 import VerdictTLDR from "@/components/report/VerdictTLDR";
 import HeroStats from "@/components/report/HeroStats";
+import SnapshotCard from "@/components/earnings/SnapshotCard";
+import type { SnapshotData } from "@/types/earnings";
 import ReportHighlights from "@/components/report/ReportHighlights";
 import HeadlineNumbersTable from "@/components/report/HeadlineNumbersTable";
 import AnnualContextSection from "@/components/report/AnnualContext";
@@ -138,6 +140,48 @@ export default async function CompanyQuarterPage({
   const strategicThreads = co.strategic_threads ?? [];
   const concallQA = co.concall_qa ?? [];
 
+  // Build SnapshotData for the hero card
+  const snapshot: SnapshotData = {
+    symbol: co.symbol,
+    company: co.company,
+    sector: co.sector,
+    market_cap: co.market_cap,
+    quarter: co.quarter,
+    result_date: co.result_date,
+    headline_verdict: co.result_status,
+    headline_verdict_basis: co.headline_verdict_basis ?? null,
+    guidance_verdict: co.guidance_verdict ?? null,
+    estimate_revision_direction: co.estimate_revision_direction ?? null,
+    estimate_revision_magnitude: co.estimate_revision_magnitude ?? null,
+    estimate_revision_metric: co.estimate_revision_metric ?? null,
+    stock_reaction_pct: co.stock_reaction_pct ?? null,
+    stock_reaction_vs_index_pct: co.stock_reaction_vs_index_pct ?? null,
+    stock_reaction_index_name: co.stock_reaction_index_name ?? null,
+    three_things_that_mattered: co.three_things_that_mattered ?? null,
+    position_bias: co.position_bias ?? null,
+    conviction: co.conviction ?? null,
+    next_catalyst_date: co.next_catalyst_date ?? null,
+    next_catalyst_event: co.next_catalyst_event ?? null,
+    rollup_verdict: co.rollup_verdict ?? null,
+    rollup_verdict_oneliner: co.rollup_verdict_oneliner ?? null,
+    layer1_verdict: co.layer1_verdict,
+    layer2_verdict: co.layer2_verdict,
+    layer3_verdict: co.layer3_verdict,
+    layer4_verdict: co.layer4_verdict,
+    layer5_verdict: co.layer5_verdict,
+  };
+
+  // Detect if snapshot card should render: any snapshot field populated
+  const hasSnapshot = Boolean(
+    snapshot.rollup_verdict ||
+      snapshot.position_bias ||
+      snapshot.three_things_that_mattered?.length ||
+      snapshot.guidance_verdict ||
+      snapshot.estimate_revision_direction ||
+      snapshot.stock_reaction_pct != null ||
+      snapshot.next_catalyst_event
+  );
+
   // Forward tracker
   const forwardTracker = Array.isArray(co.next_quarter_watchlist)
     ? (co.next_quarter_watchlist as Array<{
@@ -158,7 +202,7 @@ export default async function CompanyQuarterPage({
     toc.push({ id, title });
   };
   if (hasRich) {
-    push("verdict", "Verdict");
+    if (!hasSnapshot) push("verdict", "Verdict");
     push("snapshot", "Headline numbers");
     if (co.report_highlights?.length) push("highlights", "60-second read");
     if (co.long_form_intro) push("intro", "The story");
@@ -206,65 +250,71 @@ export default async function CompanyQuarterPage({
         <span className="text-zinc-300">{co.company}</span>
       </nav>
 
-      {/* Hero header */}
-      <header className="mb-10 pb-8 border-b border-white/5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl lg:text-[44px] font-medium text-white tracking-tight leading-[1.1]">
-              {co.company}
-              <span className="text-zinc-500 font-normal text-xl lg:text-2xl ml-2 lg:ml-3">
-                · {quarter}
-              </span>
-            </h1>
-            <div className="mt-3 flex items-center gap-3 text-sm text-zinc-500 flex-wrap font-mono">
-              <span className="text-emerald-400">NSE: {co.symbol}</span>
-              {co.sector && (
-                <>
-                  <span>·</span>
-                  <span className="font-sans">{co.sector}</span>
-                </>
-              )}
-              {co.market_cap && (
-                <>
-                  <span>·</span>
-                  <span>{co.market_cap}</span>
-                </>
-              )}
-              {co.result_date && (
-                <>
-                  <span>·</span>
-                  <span className="font-sans">
-                    Reported{" "}
-                    {new Date(co.result_date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                </>
-              )}
+      {/* Hero — SnapshotCard if we have institutional fields, otherwise legacy header */}
+      {hasSnapshot ? (
+        <SnapshotCard data={snapshot} />
+      ) : (
+        <header className="mb-10 pb-8 border-b border-white/5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-3xl lg:text-[44px] font-medium text-white tracking-tight leading-[1.1]">
+                {co.company}
+                <span className="text-zinc-500 font-normal text-xl lg:text-2xl ml-2 lg:ml-3">
+                  · {quarter}
+                </span>
+              </h1>
+              <div className="mt-3 flex items-center gap-3 text-sm text-zinc-500 flex-wrap font-mono">
+                <span className="text-emerald-400">NSE: {co.symbol}</span>
+                {co.sector && (
+                  <>
+                    <span>·</span>
+                    <span className="font-sans">{co.sector}</span>
+                  </>
+                )}
+                {co.market_cap && (
+                  <>
+                    <span>·</span>
+                    <span>{co.market_cap}</span>
+                  </>
+                )}
+                {co.result_date && (
+                  <>
+                    <span>·</span>
+                    <span className="font-sans">
+                      Reported{" "}
+                      {new Date(co.result_date).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
+            <span
+              className={cn(
+                "text-sm font-medium px-3 py-1 rounded-full border",
+                resultStatusColor(co.result_status)
+              )}
+            >
+              {co.result_status}
+            </span>
           </div>
-          <span
-            className={cn(
-              "text-sm font-medium px-3 py-1 rounded-full border",
-              resultStatusColor(co.result_status)
-            )}
-          >
-            {co.result_status}
-          </span>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="lg:grid lg:grid-cols-[1fr_200px] lg:gap-12">
         <div className="space-y-14 min-w-0">
           {hasRich ? (
             <>
-              {/* 01 · Verdict TL;DR */}
-              <section id="verdict" className="scroll-mt-20">
-                <SectionHeading num={next()}>The verdict</SectionHeading>
-                <VerdictTLDR co={co} />
-              </section>
+              {/* 01 · Verdict TL;DR — skip when SnapshotCard is rendering (it covers verdict) */}
+              {!hasSnapshot && (
+                <section id="verdict" className="scroll-mt-20">
+                  <SectionHeading num={next()}>The verdict</SectionHeading>
+                  <VerdictTLDR co={co} />
+                </section>
+              )}
 
               {/* 02 · Hero stats + Headline numbers table */}
               <section id="snapshot" className="scroll-mt-20">
