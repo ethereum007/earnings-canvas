@@ -115,6 +115,7 @@ export interface EarningsSeasonRow {
   layer3_verdict?: LayerVerdict | null;
   layer4_verdict?: LayerVerdict | null;
   layer5_verdict?: LayerVerdict | null;
+  pnl_layer?: PnLLayerData | null;
 }
 
 // ───── Rich report types (Phase 2A+) ─────
@@ -330,6 +331,27 @@ export interface SnapshotData {
   layer3_verdict?: LayerVerdict | null;
   layer4_verdict?: LayerVerdict | null;
   layer5_verdict?: LayerVerdict | null;
+}
+
+// ───── Layer 1 · P&L vs Consensus ─────
+
+export type MetricVerdict = "BEAT" | "INLINE" | "MISS";
+
+export interface PnLMetric {
+  metric: string;             // 'Revenue' | 'EBITDA' | 'PAT' | 'EBIT margin %' | 'EPS' | etc.
+  estimate?: string;          // '₹70,500 Cr' (display string)
+  actual: string;             // '₹70,698 Cr'
+  surprise_pct?: number;      // 0.3 (decimal points OK)
+  yoy_pct?: number;           // 9.6
+  qoq_pct?: number;           // 1.2
+  verdict?: MetricVerdict;
+  driver?: string;            // 'INR depreciation reported tailwind'
+}
+
+export interface PnLLayerData {
+  metrics: PnLMetric[];
+  caveats?: string[];
+  verdict_oneliner?: string;
 }
 
 // Tailwind class config per verdict tone (using our zinc/emerald scheme)

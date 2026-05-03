@@ -12,7 +12,8 @@ import SectionHeading from "@/components/report/SectionHeading";
 import VerdictTLDR from "@/components/report/VerdictTLDR";
 import HeroStats from "@/components/report/HeroStats";
 import SnapshotCard from "@/components/earnings/SnapshotCard";
-import type { SnapshotData } from "@/types/earnings";
+import PnLLayer from "@/components/earnings/PnLLayer";
+import type { SnapshotData, PnLLayerData } from "@/types/earnings";
 import ReportHighlights from "@/components/report/ReportHighlights";
 import HeadlineNumbersTable from "@/components/report/HeadlineNumbersTable";
 import AnnualContextSection from "@/components/report/AnnualContext";
@@ -171,6 +172,9 @@ export default async function CompanyQuarterPage({
     layer5_verdict: co.layer5_verdict,
   };
 
+  const pnlLayer = (co.pnl_layer ?? null) as PnLLayerData | null;
+  const hasPnlLayer = Boolean(pnlLayer && pnlLayer.metrics?.length);
+
   // Detect if snapshot card should render: any snapshot field populated
   const hasSnapshot = Boolean(
     snapshot.rollup_verdict ||
@@ -203,7 +207,7 @@ export default async function CompanyQuarterPage({
   };
   if (hasRich) {
     if (!hasSnapshot) push("verdict", "Verdict");
-    push("snapshot", "Headline numbers");
+    push(hasPnlLayer ? "pnl" : "snapshot", hasPnlLayer ? "P&L vs Consensus" : "Headline numbers");
     if (co.report_highlights?.length) push("highlights", "60-second read");
     if (co.long_form_intro) push("intro", "The story");
     if (co.annual_context) push("annual", "Annual context");
@@ -316,14 +320,26 @@ export default async function CompanyQuarterPage({
                 </section>
               )}
 
-              {/* 02 · Hero stats + Headline numbers table */}
-              <section id="snapshot" className="scroll-mt-20">
-                <SectionHeading num={next()}>Headline numbers</SectionHeading>
-                <div className="space-y-5">
-                  <HeroStats co={co} />
-                  <HeadlineNumbersTable co={co} />
-                </div>
-              </section>
+              {/* 02 · P&L vs Consensus (Layer 1) — supersedes Headline numbers when present */}
+              {hasPnlLayer ? (
+                <section id="pnl" className="scroll-mt-20">
+                  <SectionHeading num={next()}>
+                    P&amp;L vs Consensus
+                  </SectionHeading>
+                  <PnLLayer
+                    data={pnlLayer!}
+                    layerVerdict={co.layer1_verdict}
+                  />
+                </section>
+              ) : (
+                <section id="snapshot" className="scroll-mt-20">
+                  <SectionHeading num={next()}>Headline numbers</SectionHeading>
+                  <div className="space-y-5">
+                    <HeroStats co={co} />
+                    <HeadlineNumbersTable co={co} />
+                  </div>
+                </section>
+              )}
 
               {/* 03 · 60-second read */}
               {co.report_highlights?.length ? (

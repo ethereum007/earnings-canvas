@@ -317,6 +317,7 @@ def parse_segment_narratives(sections: dict[str, str]) -> list[dict[str, Any]]:
         "what management said", "concall q&a", "forward tracker", "sector echo",
         "trade idea", "live chart", "nse corporate announcements", "bottom line",
         "distribution copy", "strategic threads", "annual", "concall",
+        "snapshot", "p&l vs consensus", "p&l vs", "pnl",
     )
     out = []
     for key, body in sections.items():
@@ -608,6 +609,79 @@ def parse_strategic_threads(body: str) -> list[dict[str, Any]]:
     return out
 
 
+def parse_pnl_layer(body: str) -> dict[str, Any] | None:
+    """
+    Parse '## P&L vs Consensus' section. Expects:
+
+      | Metric | Estimate | Actual | Surprise | YoY | Verdict | Driver |
+      | Revenue | ₹70,500 Cr | ₹70,698 Cr | +0.3% | +9.6% | INLINE | INR weakness |
+      ...
+
+      > **Caveat:** ...
+
+      **Verdict:** POSITIVE — short oneliner
+    """
+    if not body.strip():
+        return None
+
+    metrics: list[dict[str, Any]] = []
+    for row in parse_md_table(body)[1:]:  # skip header
+        if len(row) < 3:
+            continue
+        m: dict[str, Any] = {
+            "metric": strip_md_emphasis(row[0]),
+            "estimate": strip_md_emphasis(row[1]) if len(row) >= 2 else None,
+            "actual": strip_md_emphasis(row[2]) if len(row) >= 3 else None,
+        }
+        if len(row) >= 4:
+            sp = parse_yoy_pct(row[3])
+            if sp is not None:
+                m["surprise_pct"] = sp
+        if len(row) >= 5:
+            yo = parse_yoy_pct(row[4])
+            if yo is not None:
+                m["yoy_pct"] = yo
+        if len(row) >= 6:
+            v = strip_md_emphasis(row[5]).upper().strip(" .")
+            if v in ("BEAT", "INLINE", "MISS"):
+                m["verdict"] = v
+        if len(row) >= 7:
+            drv = strip_md_emphasis(row[6])
+            if drv and drv != "—":
+                m["driver"] = drv
+        # Filter out empty/dash actuals
+        if m.get("actual") and m["actual"] != "—":
+            metrics.append(m)
+
+    if not metrics:
+        return None
+
+    out: dict[str, Any] = {"metrics": metrics}
+
+    # Caveats — blockquoted '> **Caveat:** ...' lines
+    caveats: list[str] = []
+    for cm in re.finditer(
+        r">\s*\*\*(?:Caveat|One catch|Note):\*\*\s*(.+?)(?=\n>\s*\*\*|\n\n|\Z)",
+        body,
+        re.DOTALL,
+    ):
+        text = re.sub(r"\n>\s*", " ", cm.group(1)).strip()
+        caveats.append(text)
+    if caveats:
+        out["caveats"] = caveats
+
+    # Verdict oneliner — '**Verdict:** POSITIVE — short oneliner'
+    vm = re.search(
+        r"\*\*Verdict:\*\*\s*(POSITIVE|MIXED|NEGATIVE|NEUTRAL)\s*[—–-]?\s*(.*)",
+        body,
+        re.IGNORECASE,
+    )
+    if vm and vm.group(2).strip():
+        out["verdict_oneliner"] = vm.group(2).strip()
+
+    return out
+
+
 def parse_snapshot(body: str) -> dict[str, Any]:
     """
     Parse '## Snapshot' section. Recognised keys (any subset):
@@ -770,6 +844,7 @@ def parse_markdown(md: str) -> dict[str, Any]:
     threads = parse_strategic_threads(find_section(sections, "Strategic threads"))
     distribution = parse_distribution(find_section(sections, "Distribution copy"))
     snapshot = parse_snapshot(find_section(sections, "Snapshot"))
+    pnl_layer = parse_pnl_layer(find_section(sections, "P&L vs Consensus", "P&L vs consensus"))
 
     return {
         "header": header,
@@ -788,6 +863,7 @@ def parse_markdown(md: str) -> dict[str, Any]:
         "threads": threads,
         "distribution": distribution,
         "snapshot": snapshot,
+        "pnl_layer": pnl_layer,
     }
 
 
@@ -882,6 +958,7 @@ def publish(parsed: dict[str, Any], dry_run: bool = False) -> str:
         "bottom_line": parsed["bottom"],
         "strategic_threads": parsed["threads"],
         "distribution_copy": parsed["distribution"],
+        "pnl_layer": parsed["pnl_layer"],
         # Snapshot card fields (each may or may not be present)
         **parsed["snapshot"],
     }
@@ -906,6 +983,8 @@ def publish(parsed: dict[str, Any], dry_run: bool = False) -> str:
         print(f"Distribution: {list(parsed['distribution'].keys()) if parsed['distribution'] else 'none'}")
         snap = parsed["snapshot"]
         print(f"Snapshot: {len(snap)} fields — keys={list(snap.keys())}")
+        if parsed["pnl_layer"]:
+            print(f"P&L Layer: {len(parsed['pnl_layer']['metrics'])} metrics")
         return f"/company/{symbol}/{quarter.replace(' ', '-')}"
 
     print(f"Upserting earnings_season for {symbol} {quarter}…")
