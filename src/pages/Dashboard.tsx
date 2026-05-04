@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardNav from "@/components/DashboardNav";
+import Q4CoverageGrid from "@/components/Q4CoverageGrid";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getSignalColor, getSignalLabel, getSentimentColor, getToneEmoji, getSentimentBarWidth } from "@/lib/signal-utils";
@@ -70,6 +71,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />
+      <Q4CoverageGrid />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-8">
