@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Sensitive — Screener.in session cookies (never commit)
+.screener_session.json
+.screener_session*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
