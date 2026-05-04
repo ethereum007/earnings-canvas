@@ -50,8 +50,40 @@ def supa(method: str, path: str, body: Any = None, prefer: str | None = None):
             text = resp.read().decode()
             return json.loads(text) if text else None
     except urllib.error.HTTPError as e:
-        print(f"HTTP {e.code} on {method} {path}\n{e.read().decode()}")
-        raise
+        body_text = e.read().decode()
+        print(f"HTTP {e.code} on {method} {path}\n{body_text}")
+        # Re-raise with original payload attached so caller can retry
+        raise type(e)(e.url, e.code, body_text, e.headers, None)
+
+
+def supa_upsert_resilient(table_path: str, row: dict[str, Any], on_conflict: str) -> Any:
+    """
+    POST upsert that auto-retries with offending columns removed when the
+    schema cache reports them missing. Lets the publisher work even if a
+    new migration hasn't been applied yet — drops the new fields gracefully
+    instead of erroring.
+    """
+    payload = dict(row)
+    for _ in range(8):
+        try:
+            return supa(
+                "POST",
+                f"{table_path}?on_conflict={on_conflict}",
+                [payload],
+                prefer="return=minimal,resolution=merge-duplicates",
+            )
+        except urllib.error.HTTPError as e:
+            txt = (e.reason if isinstance(e.reason, str) else str(e.reason)) or ""
+            # PGRST204 = column not found in schema cache
+            m = re.search(r"Could not find the '([^']+)' column", txt)
+            if not m:
+                raise
+            col = m.group(1)
+            if col not in payload:
+                raise
+            print(f"  [warn] schema-cache missing '{col}', retrying without it")
+            payload.pop(col, None)
+    raise RuntimeError("upsert failed after dropping known-missing columns")
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -988,20 +1020,10 @@ def publish(parsed: dict[str, Any], dry_run: bool = False) -> str:
         return f"/company/{symbol}/{quarter.replace(' ', '-')}"
 
     print(f"Upserting earnings_season for {symbol} {quarter}…")
-    supa(
-        "POST",
-        "earnings_season?on_conflict=company_id,quarter",
-        [season_row],
-        prefer="return=minimal,resolution=merge-duplicates",
-    )
+    supa_upsert_resilient("earnings_season", season_row, "company_id,quarter")
 
     print(f"Upserting earnings_analyses for {symbol} {quarter}…")
-    supa(
-        "POST",
-        "earnings_analyses?on_conflict=company_id,quarter",
-        [analysis_row],
-        prefer="return=minimal,resolution=merge-duplicates",
-    )
+    supa_upsert_resilient("earnings_analyses", analysis_row, "company_id,quarter")
 
     return f"/company/{symbol}/{quarter.replace(' ', '-')}"
 
