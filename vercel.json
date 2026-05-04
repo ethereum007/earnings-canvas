@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "https://earnings-canvas-next.vercel.app/"
+    },
+    {
       "source": "/company/:symbol/:quarter",
       "destination": "https://earnings-canvas-next.vercel.app/company/:symbol/:quarter"
     },
