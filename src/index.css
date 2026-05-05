@@ -6,23 +6,23 @@
 
 @layer base {
   :root {
-    --background: 210 40% 96%;
-    --foreground: 220 30% 20%;
+    --background: 0 0% 100%;
+    --foreground: 222 25% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 30% 20%;
+    --card-foreground: 222 25% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 20%;
+    --popover-foreground: 222 25% 8%;
 
-    --primary: 270 60% 55%;
+    --primary: 270 60% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 90%;
-    --secondary-foreground: 220 30% 20%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 222 25% 8%;
 
-    --muted: 210 30% 90%;
-    --muted-foreground: 215 16% 42%;
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 20% 32%;
 
     --accent: 160 60% 40%;
     --accent-foreground: 0 0% 100%;
@@ -56,23 +56,23 @@
   }
 
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
+    --background: 222 47% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 217 33% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 217 33% 11%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 222 47% 7%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 270 60% 60%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 270 60% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 217 33% 16%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 25% 75%;
 
     --accent: 160 60% 45%;
     --accent-foreground: 210 40% 98%;
