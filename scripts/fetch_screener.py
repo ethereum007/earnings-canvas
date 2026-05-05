@@ -396,10 +396,25 @@ def main() -> None:
         log(f"loaded {len(cookies)} cookies: {sorted(cookies.keys())}")
         rows = fetch_latest_results(cookies)
         log(f"found {len(rows)} companies on /results/latest/")
-        # CSV-ish print: ticker, date, name
-        print("\nticker,date,name")
+
+        # Save to CSV
+        out_csv = REPO_ROOT / "scripts" / "screener_latest_results.csv"
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
+        lines = ["ticker,date,name"]
         for r in rows:
+            # quote name in case it contains commas
+            name_escaped = r["name"].replace('"', '""')
+            lines.append(f'{r["ticker"]},{r["date_text"]},"{name_escaped}"')
+        out_csv.write_text("\n".join(lines), encoding="utf-8")
+        log(f"saved → {out_csv}")
+
+        # Also print first 20 rows so you can verify in terminal
+        print("\nFirst 20 rows (full list saved to CSV):")
+        print("ticker,date,name")
+        for r in rows[:20]:
             print(f"{r['ticker']},{r['date_text']},{r['name']}")
+        if len(rows) > 20:
+            print(f"... and {len(rows) - 20} more (in CSV)")
         return
 
     if not args.ticker:
