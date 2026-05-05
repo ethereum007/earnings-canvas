@@ -23,13 +23,13 @@ const QuarterTabs = () => {
           <span className="inline-block text-[10px] font-mono uppercase tracking-[0.22em] px-2.5 py-1 rounded-full border border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
             Earnings Season Live
           </span>
-          <h1 className="mt-4 text-3xl lg:text-4xl font-medium tracking-tight text-foreground leading-[1.05]">
+          <h1 className="mt-4 text-3xl lg:text-4xl font-semibold tracking-tight text-foreground leading-[1.05]">
             India earnings intelligence,{" "}
             <span className="text-emerald-500">
               built for institutional eyes.
             </span>
           </h1>
-          <p className="mt-3 text-sm lg:text-base text-muted-foreground leading-relaxed max-w-2xl">
+          <p className="mt-3 text-sm lg:text-base text-foreground/85 leading-relaxed max-w-2xl font-medium">
             Same-day institutional-grade synthesis for every Indian listed
             company. Pick a quarter to browse covered names, then click any
             sector to filter.

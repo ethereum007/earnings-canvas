@@ -194,7 +194,7 @@ const CoverageGrid = ({ quarter }: { quarter: string }) => {
                   <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-1">
                     {co.sector ?? "—"}
                   </div>
-                  <h3 className="text-base lg:text-lg font-medium text-foreground tracking-tight truncate">
+                  <h3 className="text-base lg:text-lg font-semibold text-foreground tracking-tight truncate">
                     {co.company}
                   </h3>
                 </div>
@@ -231,7 +231,7 @@ const CoverageGrid = ({ quarter }: { quarter: string }) => {
               </div>
 
               {co.rollup_verdict_oneliner && (
-                <p className="mt-3 text-sm text-foreground/80 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
+                <p className="mt-3 text-sm text-foreground leading-snug line-clamp-2 font-medium">
                   {co.rollup_verdict_oneliner}
                 </p>
               )}
