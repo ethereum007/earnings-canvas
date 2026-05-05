@@ -312,11 +312,68 @@ def extract_pdf_text(pdf_path: Path) -> Path | None:
 
 
 # ────────────────────────────────────────────────────────────────────
+# Latest-results listing (Pro-only page)
+# ────────────────────────────────────────────────────────────────────
+def fetch_latest_results(cookies: dict[str, str]) -> list[dict[str, str]]:
+    """Scrape /results/latest/ and return [{ticker, name, url, date_text}]."""
+    url = "https://www.screener.in/results/latest/"
+    log(f"GET {url}")
+    r = requests.get(
+        url,
+        cookies=cookies,
+        headers={"User-Agent": UA, "Accept": "text/html"},
+        timeout=30,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(
+            f"results/latest returned {r.status_code} — check cookies / Pro access"
+        )
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # The page lists company links to /company/{TICKER}/. Pull every one + nearby date text.
+    found: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        m = re.match(r"^/company/([A-Z0-9&\-]+)/?$", href)
+        if not m:
+            continue
+        ticker = m.group(1).upper()
+        if ticker in seen:
+            continue
+        seen.add(ticker)
+        name = (a.get_text(" ", strip=True) or "").strip()
+        # Look for a sibling/parent date string (e.g., "May 02, 2026" or "30 Apr")
+        date_text = ""
+        for ancestor in a.parents:
+            ptxt = ancestor.get_text(" ", strip=True) if ancestor else ""
+            if not ptxt or len(ptxt) > 400:
+                continue
+            dm = re.search(
+                r"(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})",
+                ptxt,
+            )
+            if dm:
+                date_text = dm.group(1)
+                break
+        found.append({
+            "ticker": ticker,
+            "name": name,
+            "url": absolutize(href),
+            "date_text": date_text,
+        })
+    return found
+
+
+# ────────────────────────────────────────────────────────────────────
 # Main
 # ────────────────────────────────────────────────────────────────────
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("ticker", help="NSE symbol e.g. RELIANCE / TCS / INFY")
+    ap.add_argument(
+        "ticker", nargs="?", default=None,
+        help="NSE symbol e.g. RELIANCE / TCS / INFY (omit when using --list-latest)",
+    )
     ap.add_argument(
         "quarter", nargs="?", default="Q4FY26",
         help="Quarter slug for output folder, e.g. Q4FY26",
@@ -328,7 +385,25 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=1, help="Number of latest concalls to pull")
     ap.add_argument("--dry-run", action="store_true", help="Discover, don't download")
     ap.add_argument("--no-extract", action="store_true", help="Skip PDF text extraction")
+    ap.add_argument(
+        "--list-latest", action="store_true",
+        help="List every company on screener.in/results/latest/ (Pro-only)",
+    )
     args = ap.parse_args()
+
+    if args.list_latest:
+        cookies = load_cookies()
+        log(f"loaded {len(cookies)} cookies: {sorted(cookies.keys())}")
+        rows = fetch_latest_results(cookies)
+        log(f"found {len(rows)} companies on /results/latest/")
+        # CSV-ish print: ticker, date, name
+        print("\nticker,date,name")
+        for r in rows:
+            print(f"{r['ticker']},{r['date_text']},{r['name']}")
+        return
+
+    if not args.ticker:
+        ap.error("ticker is required unless --list-latest is set")
 
     ticker = args.ticker.upper()
     out_dir = Path(args.out_root) / f"{ticker}_{args.quarter}"
