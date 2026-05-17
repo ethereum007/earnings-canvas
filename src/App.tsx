@@ -10,6 +10,7 @@ import PolicyAlpha from "./pages/PolicyAlpha";
 import Conferences from "./pages/Conferences";
 import Investors from "./pages/Investors";
 import Brokers from "./pages/Brokers";
+import MarketSignals from "./pages/MarketSignals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/conferences" element={<Conferences />} />
           <Route path="/investors" element={<Investors />} />
           <Route path="/brokers" element={<Brokers />} />
+          <Route path="/market-signals" element={<MarketSignals />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

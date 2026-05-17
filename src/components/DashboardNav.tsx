@@ -9,6 +9,7 @@ const navItems = [
   { label: "Conferences", path: "/conferences" },
   { label: "Investors", path: "/investors" },
   { label: "Brokers", path: "/brokers" },
+  { label: "Market Signals", path: "/market-signals" },
 ];
 
 const DashboardNav = () => {
