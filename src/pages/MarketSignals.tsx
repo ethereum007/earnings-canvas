@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Filter, RefreshCcw, Search, TrendingUp } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, ChevronLeft, ChevronRight, ExternalLink, Filter, RefreshCcw, Search, TrendingUp } from "lucide-react";
 import DashboardNav from "@/components/DashboardNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,16 +44,37 @@ const materialityTone: Record<MarketSignal["materiality"], string> = {
   unknown: "bg-muted text-muted-foreground border-border",
 };
 
+const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+const toDateInput = (date: Date) => format(date, "yyyy-MM-dd");
+
 const MarketSignals = () => {
   const [query, setQuery] = useState("");
   const [eventType, setEventType] = useState("order_win");
+  const [selectedDate, setSelectedDate] = useState(() => startOfLocalDay(new Date()));
+
+  const dateRange = useMemo(() => {
+    const start = startOfLocalDay(selectedDate);
+    const end = addDays(start, 1);
+    return {
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+      label: format(start, "dd MMM yyyy"),
+    };
+  }, [selectedDate]);
 
   const { data = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["market-signals"],
+    queryKey: ["market-signals", toDateInput(selectedDate)],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("announcement_signals" as never)
         .select("*")
+        .gte("event_date", dateRange.startIso)
+        .lt("event_date", dateRange.endIso)
         .order("signal_score", { ascending: false })
         .order("event_date", { ascending: false })
         .limit(250);
@@ -85,17 +109,51 @@ const MarketSignals = () => {
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
-              NSE corporate filings
+              NSE corporate filings for {dateRange.label}
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground">Market Signals</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
               Trade-focused NSE filings: order wins, capex, fundraising, M&A, and rating actions. Routine filings are filtered out.
             </p>
           </div>
-          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setSelectedDate((date) => addDays(date, -1))} aria-label="Previous day">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-44 justify-start">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.label}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(startOfLocalDay(date))}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSelectedDate((date) => addDays(date, 1))}
+              disabled={toDateInput(selectedDate) >= toDateInput(new Date())}
+              aria-label="Next day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={() => setSelectedDate(startOfLocalDay(new Date()))}>
+              Today
+            </Button>
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <section className="grid gap-3 py-5 sm:grid-cols-3">
@@ -140,7 +198,7 @@ const MarketSignals = () => {
           {isLoading ? (
             <div className="py-12 text-sm text-muted-foreground">Loading market signals...</div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-sm text-muted-foreground">No signals found for the current filters.</div>
+            <div className="py-12 text-sm text-muted-foreground">No trade signals found for {dateRange.label} with the current filters.</div>
           ) : (
             filtered.map((signal) => (
               <article key={signal.id} className="grid gap-4 py-5 lg:grid-cols-[180px_1fr_160px]">
