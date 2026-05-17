@@ -17,6 +17,13 @@ type MarketSignal = {
   signal_score: number;
   confidence: "high" | "medium" | "low";
   source_url: string | null;
+  metadata: {
+    order_scope?: string | null;
+    geography?: string | null;
+    client_type?: string | null;
+    trade_read?: string | null;
+    subject?: string | null;
+  } | null;
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -80,6 +87,16 @@ function materialityClass(materiality: MarketSignal["materiality"]) {
   if (materiality === "medium") return "border-sky-400/40 bg-sky-400/10 text-sky-300";
   if (materiality === "low") return "border-amber-400/40 bg-amber-400/10 text-amber-300";
   return "border-zinc-700 bg-zinc-900 text-zinc-400";
+}
+
+function DetailPill({ label, value }: { label: string; value?: string | number | null }) {
+  if (!value) return null;
+  return (
+    <div className="border border-white/10 bg-zinc-900/70 px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="mt-1 text-sm font-medium text-zinc-100">{value}</div>
+    </div>
+  );
 }
 
 export default async function MarketSignalsPage({
@@ -218,11 +235,18 @@ export default async function MarketSignalsPage({
                   )}
                 </div>
                 <h2 className="mt-3 text-base font-semibold text-white">{signal.headline}</h2>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <DetailPill label="Order value" value={signal.order_value_text} />
+                  <DetailPill label="Client" value={signal.counterparty} />
+                  <DetailPill label="Client type" value={signal.metadata?.client_type} />
+                  <DetailPill label="Geography" value={signal.metadata?.geography} />
+                </div>
+                <DetailPill label="Project scope" value={signal.metadata?.order_scope} />
                 {signal.why_it_matters && (
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{signal.why_it_matters}</p>
-                )}
-                {signal.counterparty && (
-                  <p className="mt-2 text-sm text-zinc-300">Counterparty: {signal.counterparty}</p>
+                  <div className="mt-3 border-l-2 border-emerald-400/50 bg-emerald-400/5 px-3 py-2">
+                    <div className="text-[11px] uppercase tracking-wide text-emerald-300">Trade read</div>
+                    <p className="mt-1 text-sm leading-6 text-zinc-200">{signal.why_it_matters}</p>
+                  </div>
                 )}
               </div>
               <div className="flex items-start justify-between gap-3 lg:flex-col lg:items-end">

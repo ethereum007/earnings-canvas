@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+from io import BytesIO
 import json
 import os
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from pypdf import PdfReader
 
 
 NSE_PAGE = "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
@@ -57,6 +59,20 @@ LOW_VALUE_NOISE = [
     "loss of share certificate",
     "newspaper advertisement",
     "annual report",
+]
+CLIENT_PATTERNS = [
+    r"Agreement\s+with\s+([A-Z][A-Za-z0-9 &.,()/-]{4,90}?)(?:\s+Pursuant|\.|,|;)",
+    r"from\s+(NLC India Renewables Limited|Bikaji Foods International Limited|BrahMos Aerospace Private Limited|Brahmos Aerospace Private Limited|Power ?Grid Corporation of India Limited|South Central Railway)",
+    r"that\s+([A-Z][A-Za-z0-9 &.,()/-]{4,90}?)\s+has\s+issued\s+(?:\d+\s+)?Letters?\s+of\s+Acceptance",
+    r"from\s+([A-Z][A-Za-z0-9 &.,()/-]{4,90}?)(?:\s+for|\s+worth|\s+valued|\s+under|\.|,|;)",
+    r"Name of the entity awarding the order\(s\)/contract\(s\);?\s*([A-Z][A-Za-z0-9 &.,()/-]{4,90}?)(?:\s+[a-z]\)|\s+Significant|\.|,|;)",
+]
+SCOPE_PATTERNS = [
+    r"for\s+(several Domestic & International T&D projects)",
+    r"for\s+(Comprehensive Signalling and Telecommunication Works[^.]{0,160})",
+    r"for\s+(supply of [A-Za-z0-9 &.,()/%/-]{10,220}?)(?:\.|;|\n)",
+    r"for\s+([A-Za-z0-9 &.,()/%/-]{20,220}?)(?:\.|;|\n)",
+    r"towards\s+([A-Za-z0-9 &.,()/%/-]{20,220}?)(?:\.|;|\n)",
 ]
 
 
@@ -147,6 +163,9 @@ def read_csv(path: Path) -> list[dict[str, Any]]:
 
 
 def value_hint(text: str) -> tuple[str | None, float | None]:
+    text = re.sub(r"rs\.?\s*ll", "rs. 11", text, flags=re.IGNORECASE)
+    text = re.sub(r"rs\.?\s*l([0-9])", r"rs. 1\1", text, flags=re.IGNORECASE)
+    text = re.sub(r"rs\.?\s*\.([0-9])", r"rs. 0.\1", text, flags=re.IGNORECASE)
     patterns = [
         r"(?:rs\.?|inr)\s*([0-9,.]+)\s*(crore|cr|million|mn|lakh)",
         r"([0-9,.]+)\s*(crore|cr|million|mn|lakh)",
@@ -166,7 +185,127 @@ def value_hint(text: str) -> tuple[str | None, float | None]:
     return None, None
 
 
-def classify(row: dict[str, Any]) -> dict[str, Any]:
+def clean_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def download_pdf_text(session: requests.Session, url: str) -> str:
+    if not url or not url.lower().endswith(".pdf"):
+        return ""
+    response = session.get(url, timeout=45)
+    response.raise_for_status()
+    reader = PdfReader(BytesIO(response.content))
+    return clean_text(" ".join(page.extract_text() or "" for page in reader.pages))
+
+
+def find_first(patterns: list[str], text: str) -> str | None:
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return clean_text(match.group(1))
+    return None
+
+
+def infer_geography(text: str) -> str | None:
+    lower = text.lower()
+    if (
+        "export order" in lower
+        or "international customer" in lower
+        or "domestic & international" in lower
+        or "overseas wholly owned subsidiary" in lower
+    ):
+        return "Export / international"
+    if "domestic" in lower:
+        return "Domestic"
+    return None
+
+
+def infer_client_type(counterparty: str | None, text: str) -> str | None:
+    blob = f"{counterparty or ''} {text}".lower()
+    if any(term in blob for term in ["railway", "powergrid", "power grid", "government", "psu", "ncl", "nlc india", "brahmos"]):
+        return "Government / PSU"
+    if "export" in blob or "international" in blob:
+        return "Export customer"
+    if counterparty:
+        return "Private / disclosed customer"
+    return None
+
+
+def trade_read(signal: dict[str, Any], scope: str | None, client_type: str | None) -> str:
+    value = signal.get("order_value_text")
+    pieces = []
+    if value:
+        pieces.append(f"disclosed order size of {value}")
+    if client_type:
+        pieces.append(client_type.lower())
+    if scope:
+        pieces.append("clear project scope")
+    if signal.get("order_value_inr_cr") and float(signal["order_value_inr_cr"]) >= 500:
+        return "High-priority trade watch: " + ", ".join(pieces) + ". Check price-volume confirmation before entry."
+    if pieces:
+        return "Trade watch: " + ", ".join(pieces) + ". Better if backed by volume breakout or sector tailwind."
+    return "Track only until order value, client or scope is clearer."
+
+
+def enrich_order_signal(row: dict[str, Any], signal: dict[str, Any], session: requests.Session) -> dict[str, Any]:
+    attachment = first(row, ["attchmntFile", "attachment_url"])
+    pdf_text = ""
+    try:
+        pdf_text = download_pdf_text(session, attachment)
+    except Exception as exc:
+        signal["metadata"] = {**signal["metadata"], "pdf_error": repr(exc)}
+        return signal
+
+    if not pdf_text:
+        return signal
+
+    order_text, order_cr = value_hint(pdf_text.lower())
+    if order_text and not signal["order_value_text"]:
+        signal["order_value_text"] = order_text
+        signal["order_value_inr_cr"] = order_cr
+
+    counterparty = find_first(CLIENT_PATTERNS, pdf_text)
+    if counterparty and any(term in counterparty.lower() for term in ["stock exchange", "press release", "ordinary course", "appointed date", "our us facility"]):
+        counterparty = None
+    scope = find_first(SCOPE_PATTERNS, pdf_text)
+    if scope and any(term in scope.lower() for term in ["approval of", "ordinary course", "period of two years annexure", "in future", "corresponding program fee"]):
+        scope = None
+    geography = infer_geography(pdf_text)
+    client_type = infer_client_type(counterparty, pdf_text)
+
+    if counterparty:
+        signal["counterparty"] = counterparty
+
+    order_cr = signal.get("order_value_inr_cr")
+    signal["materiality"] = (
+        "high" if order_cr and float(order_cr) >= 500 else
+        "medium" if order_cr and float(order_cr) >= 100 else
+        "low" if order_cr else
+        "unknown"
+    )
+    signal["signal_score"] = min(
+        100,
+        int(signal["signal_score"])
+        + (20 if order_cr else 0)
+        + (10 if counterparty else 0)
+        + (10 if scope else 0)
+        + (5 if geography else 0),
+    )
+    value_part = f" worth {signal['order_value_text']}" if signal.get("order_value_text") else ""
+    signal["headline"] = f"{signal['symbol']}: order win{value_part}"
+    signal["why_it_matters"] = trade_read(signal, scope, client_type)
+    signal["metadata"] = {
+        **signal["metadata"],
+        "order_scope": scope,
+        "geography": geography,
+        "client_type": client_type,
+        "trade_read": signal["why_it_matters"],
+        "pdf_text_preview": pdf_text[:700],
+    }
+    return signal
+
+
+def classify(row: dict[str, Any], session: requests.Session | None = None) -> dict[str, Any]:
     symbol = first(row, ["symbol", "sm_name"]).upper()
     company = first(row, ["companyName", "company_name", "sm_name"])
     subject = first(row, ["desc", "subject"])
@@ -198,7 +337,7 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
     headline = f"{symbol}: {subject}".strip(": ")
     why = details[:280] if details else subject
 
-    return {
+    signal = {
         "announcement_uid": uid_for(row),
         "symbol": symbol,
         "company_name": company,
@@ -215,6 +354,9 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
         "source_url": attachment,
         "metadata": {"subject": subject},
     }
+    if event_type == "order_win" and session:
+        signal = enrich_order_signal(row, signal, session)
+    return signal
 
 
 def announcement_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -233,7 +375,9 @@ def announcement_row(row: dict[str, Any]) -> dict[str, Any]:
 
 def upsert(rows: list[dict[str, Any]], dry_run: bool) -> None:
     announcements = [announcement_row(row) for row in rows]
-    classified = [classify(row) for row in rows]
+    session = requests.Session()
+    session.headers.update(headers())
+    classified = [classify(row, session) for row in rows]
     signals = [
         signal
         for signal in classified
