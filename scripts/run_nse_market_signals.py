@@ -40,11 +40,23 @@ EVENT_RULES = [
     ("capex", ["capex", "capacity expansion", "greenfield", "brownfield", "new plant"]),
     ("fundraising", ["fund raising", "fundraising", "qip", "preferential issue", "rights issue"]),
     ("m_and_a", ["acquisition", "merger", "amalgamation", "joint venture", "slump sale"]),
-    ("investor_presentation", ["investor presentation", "presentation"]),
-    ("results", ["financial results", "audited results", "unaudited results", "outcome of board meeting"]),
     ("credit_rating", ["credit rating", "rating action", "ratings"]),
-    ("management_change", ["resignation", "appointment", "director", "change in management"]),
-    ("insider_trading", ["insider trading", "trading window"]),
+]
+ACTIONABLE_EVENT_TYPES = {"order_win", "capex", "fundraising", "m_and_a", "credit_rating"}
+LOW_VALUE_NOISE = [
+    "copy of newspaper publication",
+    "newspaper publication",
+    "kyc details",
+    "physical securities",
+    "investor presentation",
+    "trading window",
+    "certificate under regulation",
+    "compliance certificate",
+    "scrutinizer",
+    "share certificate",
+    "loss of share certificate",
+    "newspaper advertisement",
+    "annual report",
 ]
 
 
@@ -164,7 +176,10 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
 
     event_type = "general"
     score = 0
-    if any(k in text for k in ORDER_WIN_KEYWORDS) and not any(k in text for k in ORDER_WIN_EXCLUSIONS):
+    if any(k in text for k in LOW_VALUE_NOISE):
+        event_type = "general"
+        score = 0
+    elif any(k in text for k in ORDER_WIN_KEYWORDS) and not any(k in text for k in ORDER_WIN_EXCLUSIONS):
         event_type = "order_win"
         score = 50
     else:
@@ -218,9 +233,23 @@ def announcement_row(row: dict[str, Any]) -> dict[str, Any]:
 
 def upsert(rows: list[dict[str, Any]], dry_run: bool) -> None:
     announcements = [announcement_row(row) for row in rows]
-    signals = [classify(row) for row in rows]
+    classified = [classify(row) for row in rows]
+    signals = [
+        signal
+        for signal in classified
+        if signal["event_type"] in ACTIONABLE_EVENT_TYPES and int(signal["signal_score"]) >= 25
+    ]
     if dry_run:
-        print(json.dumps({"announcements": len(announcements), "signals": len(signals)}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "announcements": len(announcements),
+                    "classified": len(classified),
+                    "published_actionable_signals": len(signals),
+                },
+                indent=2,
+            )
+        )
         return
     for chunk_start in range(0, len(announcements), 250):
         supa(

@@ -26,17 +26,13 @@ type MarketSignal = {
 };
 
 const eventLabels: Record<string, string> = {
-  order_win: "Orders",
+  order_win: "Order wins",
   capex: "Capex",
   fundraising: "Fundraise",
   m_and_a: "M&A",
-  investor_presentation: "Investor PPT",
-  results: "Results",
   credit_rating: "Ratings",
-  management_change: "Management",
-  insider_trading: "Insider",
-  general: "General",
 };
+const actionableEventTypes = Object.keys(eventLabels);
 
 const materialityTone: Record<MarketSignal["materiality"], string> = {
   high: "bg-emerald/10 text-emerald border-emerald/30",
@@ -47,7 +43,7 @@ const materialityTone: Record<MarketSignal["materiality"], string> = {
 
 const MarketSignals = () => {
   const [query, setQuery] = useState("");
-  const [eventType, setEventType] = useState("all");
+  const [eventType, setEventType] = useState("order_win");
 
   const { data = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["market-signals"],
@@ -55,8 +51,8 @@ const MarketSignals = () => {
       const { data, error } = await supabase
         .from("announcement_signals" as never)
         .select("*")
-        .order("event_date", { ascending: false })
         .order("signal_score", { ascending: false })
+        .order("event_date", { ascending: false })
         .limit(250);
       if (error) throw error;
       return (data ?? []) as unknown as MarketSignal[];
@@ -66,6 +62,7 @@ const MarketSignals = () => {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return data.filter((signal) => {
+      if (!actionableEventTypes.includes(signal.event_type)) return false;
       const matchesType = eventType === "all" || signal.event_type === eventType;
       const blob = `${signal.symbol} ${signal.company_name ?? ""} ${signal.headline}`.toLowerCase();
       return matchesType && (!needle || blob.includes(needle));
@@ -73,9 +70,10 @@ const MarketSignals = () => {
   }, [data, eventType, query]);
 
   const topStats = useMemo(() => {
-    const orderWins = data.filter((signal) => signal.event_type === "order_win").length;
-    const highScore = data.filter((signal) => signal.signal_score >= 70).length;
-    const withValue = data.filter((signal) => signal.order_value_text).length;
+    const actionable = data.filter((signal) => actionableEventTypes.includes(signal.event_type));
+    const orderWins = actionable.filter((signal) => signal.event_type === "order_win").length;
+    const highScore = actionable.length;
+    const withValue = actionable.filter((signal) => signal.order_value_text).length;
     return { orderWins, highScore, withValue };
   }, [data]);
 
@@ -91,7 +89,7 @@ const MarketSignals = () => {
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground">Market Signals</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Daily exchange announcements classified into order wins, capex, fundraising, M&A, ratings, results, and management events.
+              Trade-focused NSE filings: order wins, capex, fundraising, M&A, and rating actions. Routine filings are filtered out.
             </p>
           </div>
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
@@ -106,7 +104,7 @@ const MarketSignals = () => {
             <div className="mt-1 text-2xl font-semibold">{topStats.orderWins}</div>
           </div>
           <div className="border border-border bg-card p-4">
-            <div className="text-sm text-muted-foreground">High-score signals</div>
+            <div className="text-sm text-muted-foreground">Actionable signals</div>
             <div className="mt-1 text-2xl font-semibold">{topStats.highScore}</div>
           </div>
           <div className="border border-border bg-card p-4">
@@ -127,7 +125,7 @@ const MarketSignals = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All event types</SelectItem>
+                <SelectItem value="all">All trade signals</SelectItem>
                 {Object.entries(eventLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
