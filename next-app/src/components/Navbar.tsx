@@ -7,6 +7,7 @@ import ThemeToggle from "./ThemeToggle";
 const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Earnings", href: "/earnings" },
+  { label: "Market Signals", href: "/market-signals" },
   { label: "Policy Alpha", href: "/policy" },
 ];
 
