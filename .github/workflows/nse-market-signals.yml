@@ -2,6 +2,15 @@ name: NSE Market Signals
 
 on:
   workflow_dispatch:
+    inputs:
+      from_date:
+        description: "Optional NSE start date in DD-MM-YYYY format"
+        required: false
+        type: string
+      to_date:
+        description: "Optional NSE end date in DD-MM-YYYY format"
+        required: false
+        type: string
   schedule:
     # GitHub Actions cron uses UTC.
     # 03:00 UTC = 08:30 IST pre-market.
@@ -33,4 +42,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: python scripts/run_nse_market_signals.py --days 1
+        run: |
+          if [ -n "${{ inputs.from_date }}" ] && [ -n "${{ inputs.to_date }}" ]; then
+            python scripts/run_nse_market_signals.py --from-date "${{ inputs.from_date }}" --to-date "${{ inputs.to_date }}"
+          else
+            python scripts/run_nse_market_signals.py --days 1
+          fi
