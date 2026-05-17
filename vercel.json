@@ -14,6 +14,14 @@
       "destination": "https://earnings-canvas-next.vercel.app/earnings"
     },
     {
+      "source": "/market-signals",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/market-signals/:path*",
+      "destination": "/index.html"
+    },
+    {
       "source": "/api/og/:path*",
       "destination": "https://earnings-canvas-next.vercel.app/api/og/:path*"
     },
