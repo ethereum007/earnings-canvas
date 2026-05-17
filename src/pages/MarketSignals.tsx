@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronLeft, ChevronRight, ExternalLink, Filter, RefreshCcw, Search, TrendingUp } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Filter, RefreshCcw, Search, TrendingUp } from "lucide-react";
 import DashboardNav from "@/components/DashboardNav";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -26,6 +25,16 @@ type MarketSignal = {
   signal_score: number;
   confidence: "high" | "medium" | "low";
   source_url: string | null;
+  metadata: {
+    order_scope?: string | null;
+    geography?: string | null;
+    client_type?: string | null;
+    trade_read?: string | null;
+    direction?: string | null;
+    action?: string | null;
+    confidence_label?: string | null;
+    fno?: string | null;
+  } | null;
 };
 
 const eventLabels: Record<string, string> = {
@@ -37,13 +46,6 @@ const eventLabels: Record<string, string> = {
 };
 const actionableEventTypes = Object.keys(eventLabels);
 
-const materialityTone: Record<MarketSignal["materiality"], string> = {
-  high: "bg-emerald/10 text-emerald border-emerald/30",
-  medium: "bg-blue/10 text-blue border-blue/30",
-  low: "bg-amber/10 text-amber border-amber/30",
-  unknown: "bg-muted text-muted-foreground border-border",
-};
-
 const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const addDays = (date: Date, days: number) => {
   const next = new Date(date);
@@ -51,6 +53,42 @@ const addDays = (date: Date, days: number) => {
   return next;
 };
 const toDateInput = (date: Date) => format(date, "yyyy-MM-dd");
+
+const directionFor = (signal: MarketSignal) => {
+  if (signal.metadata?.direction) return signal.metadata.direction;
+  if (["order_win", "capex", "m_and_a"].includes(signal.event_type)) return "BULLISH";
+  return "NEUTRAL";
+};
+
+const actionFor = (signal: MarketSignal) => {
+  if (signal.metadata?.action) return signal.metadata.action;
+  if (signal.event_type === "order_win" && signal.signal_score >= 70) return "BUY MOMENTUM";
+  return "WATCH";
+};
+
+const confidenceFor = (signal: MarketSignal) => {
+  if (signal.metadata?.confidence_label) return signal.metadata.confidence_label;
+  if (signal.signal_score >= 80) return "HIGH";
+  if (signal.signal_score >= 55) return "MEDIUM";
+  return "LOW";
+};
+
+const summaryFor = (signal: MarketSignal) => {
+  const bits = [];
+  if (signal.order_value_text) bits.push(`Order value: ${signal.order_value_text}`);
+  if (signal.counterparty) bits.push(`Client: ${signal.counterparty}`);
+  if (signal.metadata?.client_type) bits.push(signal.metadata.client_type);
+  if (signal.metadata?.geography) bits.push(signal.metadata.geography);
+  if (signal.metadata?.order_scope) bits.push(`Scope: ${signal.metadata.order_scope}`);
+  if (bits.length) return bits.join(" | ");
+  return signal.why_it_matters ?? signal.headline;
+};
+
+const directionClass = (direction: string) => {
+  if (direction === "BULLISH") return "text-emerald-600";
+  if (direction === "BEARISH") return "text-red-600";
+  return "text-muted-foreground";
+};
 
 const MarketSignals = () => {
   const [query, setQuery] = useState("");
@@ -100,6 +138,11 @@ const MarketSignals = () => {
     const withValue = actionable.filter((signal) => signal.order_value_text).length;
     return { orderWins, highScore, withValue };
   }, [data]);
+
+  const topPicks = useMemo(
+    () => filtered.filter((signal) => actionFor(signal) === "BUY MOMENTUM").slice(0, 3),
+    [filtered],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -194,49 +237,79 @@ const MarketSignals = () => {
           </div>
         </div>
 
-        <section className="divide-y divide-border">
+        <section>
           {isLoading ? (
             <div className="py-12 text-sm text-muted-foreground">Loading market signals...</div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-sm text-muted-foreground">No trade signals found for {dateRange.label} with the current filters.</div>
           ) : (
-            filtered.map((signal) => (
-              <article key={signal.id} className="grid gap-4 py-5 lg:grid-cols-[180px_1fr_160px]">
-                <div>
-                  <div className="text-lg font-semibold">{signal.symbol}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{signal.company_name}</div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {signal.event_date ? new Date(signal.event_date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Date unavailable"}
+            <>
+              <div className="overflow-x-auto border border-border">
+                <table className="min-w-[1080px] w-full border-collapse text-sm">
+                  <thead className="bg-secondary text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="w-12 border-b border-border px-3 py-3">#</th>
+                      <th className="w-36 border-b border-border px-3 py-3">Stock</th>
+                      <th className="border-b border-border px-3 py-3">Announcement Summary</th>
+                      <th className="w-28 border-b border-border px-3 py-3">Direction</th>
+                      <th className="w-20 border-b border-border px-3 py-3">F&O</th>
+                      <th className="w-36 border-b border-border px-3 py-3">Action</th>
+                      <th className="w-28 border-b border-border px-3 py-3">Confidence</th>
+                      <th className="w-20 border-b border-border px-3 py-3">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map((signal, index) => {
+                      const direction = directionFor(signal);
+                      return (
+                        <tr key={signal.id} className="align-top hover:bg-secondary/40">
+                          <td className="px-3 py-3 text-muted-foreground">{index + 1}</td>
+                          <td className="px-3 py-3">
+                            <div className="font-semibold">{signal.symbol}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {signal.event_date ? new Date(signal.event_date).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Date unavailable"}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-medium">{signal.headline}</div>
+                            <div className="mt-1 leading-6 text-muted-foreground">{summaryFor(signal)}</div>
+                            {signal.why_it_matters && <div className="mt-2 text-xs text-emerald">{signal.why_it_matters}</div>}
+                          </td>
+                          <td className={`px-3 py-3 font-semibold ${directionClass(direction)}`}>
+                            <span className="mr-1">{direction === "BULLISH" ? "●" : direction === "BEARISH" ? "●" : "○"}</span>
+                            {direction}
+                          </td>
+                          <td className="px-3 py-3">{signal.metadata?.fno ?? "NO"}</td>
+                          <td className="px-3 py-3 font-semibold">{actionFor(signal)}</td>
+                          <td className="px-3 py-3">{confidenceFor(signal)}</td>
+                          <td className="px-3 py-3">
+                            {signal.source_url && (
+                              <a className="text-emerald hover:underline" href={signal.source_url} target="_blank" rel="noreferrer">
+                                PDF
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {topPicks.length > 0 && (
+                <div className="mt-6 border border-emerald/20 bg-emerald/5 p-4">
+                  <h2 className="text-sm font-semibold text-emerald">CIO's Top 3 Picks</h2>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    {topPicks.map((signal) => (
+                      <div key={signal.id} className="border border-border bg-card p-3">
+                        <div className="font-semibold">{signal.symbol}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">{summaryFor(signal)}</div>
+                        <div className="mt-2 text-xs text-emerald">{actionFor(signal)} | {confidenceFor(signal)}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{eventLabels[signal.event_type] ?? signal.event_type}</Badge>
-                    <Badge variant="outline" className={materialityTone[signal.materiality]}>
-                      {signal.materiality}
-                    </Badge>
-                    {signal.order_value_text && <Badge variant="outline">{signal.order_value_text}</Badge>}
-                  </div>
-                  <h2 className="mt-3 text-base font-semibold">{signal.headline}</h2>
-                  {signal.why_it_matters && <p className="mt-2 text-sm leading-6 text-muted-foreground">{signal.why_it_matters}</p>}
-                  {signal.counterparty && <p className="mt-2 text-sm">Counterparty: {signal.counterparty}</p>}
-                </div>
-                <div className="flex items-start justify-between gap-3 lg:flex-col lg:items-end">
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground">Score</div>
-                    <div className="text-2xl font-semibold">{signal.signal_score}</div>
-                  </div>
-                  {signal.source_url && (
-                    <Button asChild variant="outline" size="sm">
-                      <a href={signal.source_url} target="_blank" rel="noreferrer">
-                        Source
-                        <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </article>
-            ))
+              )}
+            </>
           )}
         </section>
       </main>
