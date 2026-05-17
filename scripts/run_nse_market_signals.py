@@ -136,6 +136,17 @@ def supa(method: str, path: str, body: Any = None, prefer: str | None = None) ->
         raise RuntimeError(f"Supabase HTTP {error.code} on {method} {path}: {detail}") from error
 
 
+def delete_existing_signals(signals: list[dict[str, Any]]) -> None:
+    for signal in signals:
+        uid = urllib.parse.quote(str(signal["announcement_uid"]), safe="")
+        event_type = urllib.parse.quote(str(signal["event_type"]), safe="")
+        supa(
+            "DELETE",
+            f"announcement_signals?announcement_uid=eq.{uid}&event_type=eq.{event_type}",
+            prefer="return=minimal",
+        )
+
+
 def first(row: dict[str, Any], keys: list[str]) -> str:
     for key in keys:
         value = row.get(key)
@@ -483,12 +494,13 @@ def upsert(rows: list[dict[str, Any]], dry_run: bool) -> None:
             announcements[chunk_start : chunk_start + 250],
             prefer="return=minimal,resolution=merge-duplicates",
         )
+    delete_existing_signals(signals)
     for chunk_start in range(0, len(signals), 250):
         supa(
             "POST",
-            "announcement_signals?on_conflict=announcement_uid,event_type",
+            "announcement_signals",
             signals[chunk_start : chunk_start + 250],
-            prefer="return=minimal,resolution=merge-duplicates",
+            prefer="return=minimal",
         )
     print(f"Upserted {len(announcements)} announcements and {len(signals)} signals")
 
