@@ -88,11 +88,16 @@ CLIENT_PATTERNS = [
     r"Name of the entity awarding the order\(s\)/contract\(s\);?\s*([A-Z][A-Za-z0-9 &.,()/-]{4,90}?)(?:\s+[a-z]\)|\s+Significant|\.|,|;)",
 ]
 SCOPE_PATTERNS = [
+    r"Significant terms and conditions order\(s\)/contract \(s\) awarded in brief;?\s*([A-Za-z0-9 &.,()/%\]\[-]{10,220}?)(?:\s+[a-z]\)|\s+Whether|\.|;)",
+    r"Nature of order\(s\)\] contract\(s\);?\s*([A-Za-z0-9 &.,()/%\]\[-]{10,260}?)(?:\s+[a-z]\)|\s+Whether|\.|;)",
     r"for\s+(several Domestic & International T&D projects)",
     r"for\s+(Comprehensive Signalling and Telecommunication Works[^.]{0,160})",
     r"for\s+(supply of [A-Za-z0-9 &.,()/%/-]{10,220}?)(?:\.|;|\n)",
     r"for\s+([A-Za-z0-9 &.,()/%/-]{20,220}?)(?:\.|;|\n)",
     r"towards\s+([A-Za-z0-9 &.,()/%/-]{20,220}?)(?:\.|;|\n)",
+]
+TIMELINE_PATTERNS = [
+    r"Time period by which order\(s\)/contract\(s\) is to be executed;?\s*([A-Za-z0-9 ,./-]{3,80}?)(?:\s+[a-z]\)|\s+Broad|\.|;)",
 ]
 
 
@@ -202,6 +207,15 @@ def value_hint(text: str) -> tuple[str | None, float | None]:
         elif unit == "lakh":
             inr_cr = amount / 100
         return f"{match.group(1)} {match.group(2)}", round(inr_cr, 2)
+    rupee_match = re.search(
+        r"(?:rs\.?|inr)\s*([0-9]{1,3}(?:,[0-9]{2})+(?:,[0-9]{3})|[0-9,]{7,})(?:/-)?",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if rupee_match:
+        rupees = float(rupee_match.group(1).replace(",", ""))
+        crore = round(rupees / 10_000_000, 2)
+        return f"Rs {crore:g} crore", crore
     return None, None
 
 
@@ -267,6 +281,21 @@ def trade_read(signal: dict[str, Any], scope: str | None, client_type: str | Non
     return "Track only until order value, client or scope is clearer."
 
 
+def concise_summary(signal: dict[str, Any], scope: str | None, timeline: str | None) -> str:
+    parts = []
+    if signal.get("order_value_text"):
+        parts.append(f"{signal['order_value_text']} order")
+    else:
+        parts.append("Order win")
+    if signal.get("counterparty"):
+        parts.append(f"from {signal['counterparty']}")
+    if scope:
+        parts.append(f"for {scope}")
+    if timeline:
+        parts.append(f"execution by {timeline}")
+    return ". ".join(parts) + "."
+
+
 def action_metadata(signal: dict[str, Any]) -> dict[str, Any]:
     event_type = signal["event_type"]
     score = int(signal["signal_score"])
@@ -316,6 +345,7 @@ def enrich_order_signal(row: dict[str, Any], signal: dict[str, Any], session: re
     scope = find_first(SCOPE_PATTERNS, pdf_text)
     if scope and any(term in scope.lower() for term in ["approval of", "ordinary course", "period of two years annexure", "in future", "corresponding program fee"]):
         scope = None
+    timeline = find_first(TIMELINE_PATTERNS, pdf_text)
     geography = infer_geography(pdf_text)
     client_type = infer_client_type(counterparty, pdf_text)
 
@@ -343,8 +373,10 @@ def enrich_order_signal(row: dict[str, Any], signal: dict[str, Any], session: re
     signal["metadata"] = {
         **signal["metadata"],
         "order_scope": scope,
+        "execution_timeline": timeline,
         "geography": geography,
         "client_type": client_type,
+        "announcement_summary": concise_summary(signal, scope, timeline),
         "trade_read": signal["why_it_matters"],
         "pdf_text_preview": pdf_text[:700],
     }

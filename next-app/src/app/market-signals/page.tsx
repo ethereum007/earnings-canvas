@@ -22,6 +22,8 @@ type MarketSignal = {
     geography?: string | null;
     client_type?: string | null;
     trade_read?: string | null;
+    announcement_summary?: string | null;
+    execution_timeline?: string | null;
     subject?: string | null;
     direction?: string | null;
     action?: string | null;
@@ -113,11 +115,13 @@ function confidenceFor(signal: MarketSignal) {
 }
 
 function summaryFor(signal: MarketSignal) {
+  if (signal.metadata?.announcement_summary) return signal.metadata.announcement_summary;
   const bits = [];
   if (signal.order_value_text) bits.push(`Order value: ${signal.order_value_text}`);
   if (signal.counterparty) bits.push(`Client: ${signal.counterparty}`);
   if (signal.metadata?.client_type) bits.push(signal.metadata.client_type);
   if (signal.metadata?.geography) bits.push(signal.metadata.geography);
+  if (signal.metadata?.execution_timeline) bits.push(`Execution: ${signal.metadata.execution_timeline}`);
   if (signal.metadata?.order_scope) bits.push(`Scope: ${signal.metadata.order_scope}`);
   if (bits.length) return bits.join(" | ");
   return signal.why_it_matters ?? signal.headline;
