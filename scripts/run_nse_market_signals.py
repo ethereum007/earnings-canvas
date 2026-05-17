@@ -45,6 +45,26 @@ EVENT_RULES = [
     ("credit_rating", ["credit rating", "rating action", "ratings"]),
 ]
 ACTIONABLE_EVENT_TYPES = {"order_win", "capex", "fundraising", "m_and_a", "credit_rating"}
+FNO_SYMBOLS = {
+    "ABB", "ACC", "ADANIENT", "ADANIPORTS", "AMBUJACEM", "APOLLOHOSP", "ASHOKLEY", "ASIANPAINT",
+    "AUBANK", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BANDHANBNK", "BANKBARODA",
+    "BEL", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BPCL", "BRITANNIA",
+    "CANBK", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "CROMPTON",
+    "CUMMINSIND", "DABUR", "DALBHARAT", "DIVISLAB", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS",
+    "EXIDEIND", "FEDERALBNK", "GAIL", "GLENMARK", "GMRINFRA", "GODREJCP", "GRASIM", "HAL",
+    "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO",
+    "HINDCOPPER", "HINDPETRO", "HINDUNILVR", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA",
+    "IDFCFIRSTB", "IEX", "IGL", "INDHOTEL", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY",
+    "IOC", "IRCTC", "ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "LT", "LTIM",
+    "LTTS", "LUPIN", "M&M", "MARICO", "MARUTI", "MAXHEALTH", "MCX", "MOTHERSON", "MPHASIS",
+    "MRF", "NATIONALUM", "NAUKRI", "NAVINFLUOR", "NESTLEIND", "NMDC", "NTPC", "OBEROIRLTY",
+    "ONGC", "PAGEIND", "PEL", "PERSISTENT", "PETRONET", "PFC", "PIDILITIND", "PIIND",
+    "PNB", "POLYCAB", "POWERGRID", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL",
+    "SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SRF", "SUNPHARMA",
+    "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM", "TATACONSUM", "TATAMOTORS", "TATAPOWER",
+    "TATASTEEL", "TCS", "TECHM", "TITAN", "TORNTPHARM", "TRENT", "TVSMOTOR", "UBL",
+    "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WIPRO", "ZEEL", "ZYDUSLIFE",
+}
 LOW_VALUE_NOISE = [
     "copy of newspaper publication",
     "newspaper publication",
@@ -247,6 +267,32 @@ def trade_read(signal: dict[str, Any], scope: str | None, client_type: str | Non
     return "Track only until order value, client or scope is clearer."
 
 
+def action_metadata(signal: dict[str, Any]) -> dict[str, Any]:
+    event_type = signal["event_type"]
+    score = int(signal["signal_score"])
+    symbol = signal["symbol"]
+    direction = "NEUTRAL"
+    action = "WATCH"
+
+    if event_type in {"order_win", "capex", "m_and_a"}:
+        direction = "BULLISH"
+        action = "BUY MOMENTUM" if score >= 70 else "WATCH"
+    elif event_type == "fundraising":
+        direction = "NEUTRAL"
+        action = "WATCH TERMS"
+    elif event_type == "credit_rating":
+        direction = "NEUTRAL"
+        action = "WATCH RATING ACTION"
+
+    confidence = "HIGH" if score >= 80 else "MEDIUM" if score >= 55 else "LOW"
+    return {
+        "direction": direction,
+        "action": action,
+        "confidence_label": confidence,
+        "fno": "YES" if symbol in FNO_SYMBOLS else "NO",
+    }
+
+
 def enrich_order_signal(row: dict[str, Any], signal: dict[str, Any], session: requests.Session) -> dict[str, Any]:
     attachment = first(row, ["attchmntFile", "attachment_url"])
     pdf_text = ""
@@ -302,6 +348,7 @@ def enrich_order_signal(row: dict[str, Any], signal: dict[str, Any], session: re
         "trade_read": signal["why_it_matters"],
         "pdf_text_preview": pdf_text[:700],
     }
+    signal["metadata"] = {**signal["metadata"], **action_metadata(signal)}
     return signal
 
 
@@ -356,6 +403,8 @@ def classify(row: dict[str, Any], session: requests.Session | None = None) -> di
     }
     if event_type == "order_win" and session:
         signal = enrich_order_signal(row, signal, session)
+    else:
+        signal["metadata"] = {**signal["metadata"], **action_metadata(signal)}
     return signal
 
 
